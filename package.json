@@ -24,7 +24,7 @@
     "ipfs-api": "^4.1.0",
     "ipfsd-ctl": "^0.13.0",
     "json-loader": "^0.5.4",
-    "libp2p-ipfs-browser": "^0.2.0",
+    "libp2p-ipfs-browser": "^0.3.0",
     "logplease": "^1.2.6",
     "mocha": "^2.4.5",
     "stream-http": "^2.2.1",
