@@ -21,7 +21,7 @@
     "exports-loader": "^0.6.3",
     "idb-plus-blob-store": "^1.1.2",
     "ipfs": "^0.10.0",
-    "ipfs-api": "^4.1.0",
+    "ipfs-api": "^5.0.1",
     "ipfs-merkle-dag": "^0.6.0",
     "ipfsd-ctl": "^0.14.0",
     "json-loader": "^0.5.4",
