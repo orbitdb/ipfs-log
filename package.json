@@ -24,7 +24,7 @@
     "idb-plus-blob-store": "^1.1.2",
     "ipfs": "^0.13.0",
     "ipfs-api": "^7.0.0",
-    "ipfs-merkle-dag": "^0.6.0",
+    "ipfs-merkle-dag": "^0.7.2",
     "ipfsd-ctl": "^0.14.0",
     "json-loader": "^0.5.4",
     "libp2p-ipfs-browser": "^0.12.0",
