@@ -27,7 +27,7 @@
     "ipfs-merkle-dag": "^0.6.0",
     "ipfsd-ctl": "^0.14.0",
     "json-loader": "^0.5.4",
-    "libp2p-ipfs-browser": "^0.12.0",
+    "libp2p-ipfs-browser": "^0.15.1",
     "logplease": "^1.2.7",
     "mocha": "^3.0.1",
     "stream-http": "^2.2.1",
