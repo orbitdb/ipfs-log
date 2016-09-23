@@ -22,7 +22,7 @@
     "brfs": "^1.4.3",
     "exports-loader": "^0.6.3",
     "idb-plus-blob-store": "^1.1.2",
-    "ipfs": "^0.13.0",
+    "ipfs": "^0.15.0",
     "ipfs-api": "^7.0.0",
     "ipfs-merkle-dag": "^0.6.0",
     "ipfsd-ctl": "^0.14.0",
