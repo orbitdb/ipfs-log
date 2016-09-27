@@ -7,7 +7,7 @@
   "license": "MIT",
   "dependencies": {
     "bluebird": "^3.3.5",
-    "buffer": "^4.5.1",
+    "buffer": "^5.0.0",
     "lazy.js": "^0.4.2",
     "lodash.differencewith": "^4.4.0",
     "lodash.flatten": "^4.3.0",
