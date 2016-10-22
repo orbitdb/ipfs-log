@@ -26,7 +26,7 @@
     "ipfs": "^0.16.0",
     "ipfs-daemon": "0.0.3",
     "ipfs-merkle-dag": "^0.6.0",
-    "ipfs-test-apis": "0.0.1",
+    "ipfs-test-apis": "0.0.2",
     "json-loader": "^0.5.4",
     "libp2p-ipfs-browser": "^0.12.0",
     "mocha": "^3.0.1",
