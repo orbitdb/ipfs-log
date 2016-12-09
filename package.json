@@ -30,7 +30,7 @@
     "exports-loader": "^0.6.3",
     "fs-pull-blob-store": "^0.3.0",
     "idb-plus-blob-store": "^1.1.2",
-    "ipfs": "^0.18.0",
+    "ipfs": "^0.20.3",
     "ipfs-daemon": "^0.3.0-beta.2",
     "ipfs-merkle-dag": "^0.6.0",
     "ipfs-test-apis": "^0.1.0-beta.2",
