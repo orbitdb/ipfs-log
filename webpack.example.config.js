@@ -49,9 +49,5 @@ module.exports = {
       loader: 'json-loader'
     }]
   },
-  node: {
-    Buffer: true
-  },
-  plugins: [],
   target: 'web'
 }
