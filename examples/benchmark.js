@@ -1,6 +1,6 @@
 'use strict'
 
-const Log   = require('../src/log')
+const Log = require('../src/log')
 const Entry = require('../src/entry')
 const IPFS = require('ipfs-daemon')
 
@@ -14,9 +14,9 @@ let log
 const queryLoop = () => {
   log.add(totalQueries)
     .then(() => {
-      totalQueries ++
-      lastTenSeconds ++
-      queriesPerSecond ++
+      totalQueries++
+      lastTenSeconds++
+      queriesPerSecond++
       process.nextTick(queryLoop)
     })
     .catch((e) => {
@@ -26,7 +26,7 @@ const queryLoop = () => {
 }
 
 let run = (() => {
-  console.log("Starting benchmark...")
+  console.log('Starting benchmark...')
 
   const ipfs = new IPFS({ Flags: [] })
 
@@ -38,11 +38,12 @@ let run = (() => {
   ipfs.on('ready', () => {
     // Output metrics at 1 second interval
     setInterval(() => {
-      seconds ++
-      if(seconds % 10 === 0) {
-        console.log(`--> Average of ${lastTenSeconds/10} q/s in the last 10 seconds`)
-        if(lastTenSeconds === 0)
-          throw new Error("Problems!")
+      seconds++
+      if (seconds % 10 === 0) {
+        console.log(`--> Average of ${lastTenSeconds / 10} q/s in the last 10 seconds`)
+        if (lastTenSeconds === 0) {
+          throw new Error('Problems!')
+        }
         lastTenSeconds = 0
       }
       console.log(`${queriesPerSecond} queries per second, ${totalQueries} queries in ${seconds} seconds`)
@@ -52,7 +53,6 @@ let run = (() => {
     log = new Log(ipfs, 'A')
     queryLoop()
   })
-
 })()
 
 module.exports = run

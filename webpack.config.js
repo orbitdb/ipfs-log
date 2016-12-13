@@ -44,6 +44,5 @@ module.exports = {
     console: false,
     Buffer: true
   },
-  plugins: [],
   target: 'web'
 }

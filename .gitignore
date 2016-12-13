@@ -1,5 +1,6 @@
 node_modules/
 *sublime*
-npm-debug.log
+**/*.log
 examples/browser/bundle.js
 ipfs/
+dist
