@@ -1,7 +1,7 @@
 'use strict'
 
 const IPFS = require('ipfs-daemon')
-const Log  = require('../src/log')
+const Log = require('../src/log')
 
 const ipfs = new IPFS()
 const log = new Log(ipfs, 'A')
