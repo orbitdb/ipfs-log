@@ -1,0 +1,37 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <h1>ipfs-log fetcher</h1>
+    <button id="open" type="button">Open</button>
+    <pre id="output"></pre>
+
+    <script type="text/javascript" src="../../dist/ipfslog.min.js" charset="utf-8"></script>
+    <script type="text/javascript" src="../../node_modules/ipfs-daemon/dist/ipfs-browser-daemon.min.js" charset="utf-8"></script>
+
+    <script type="text/javascript">
+      openButton.addEventListener('click', () => {
+        const entry = Entry.fromMultihash(ipfs, 'QmRUmzodJVVweMMT8bVXUpWo6dMZDBhVcsnxe6crKVhNGH')
+        // Log.fromEntry(ipfs, 'QmRUmzodJVVweMMT8bVXUpWo6dMZDBhVcsnxe6crKVhNGH')
+          .then((res) => {
+            console.log(res)
+            // log = res
+            // const items = JSON.stringify(log.items, null, 2)
+            // console.log('\n', items)
+            outputElm.innerHTML += items + '<br><br>'
+          })        
+      })
+
+      const ipfs = new IpfsDaemon({ IpfsDataDir: '/ipfs-log/examples/browser' })
+
+      ipfs.on('error', (e) => console.error(e))
+      ipfs.on('ready', () => {
+        const outputElm = document.getElementById('output')
+        const openButton = document.getElementById("open")
+        ipfs.id().then((id) => console.log(id))
+      })
+
+    </script>
+  </body>
+</html>

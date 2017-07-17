@@ -112,8 +112,7 @@ class Log {
    * @return {Log} New Log containing the appended value
    */
   append (entry) {
-    const entrySet = this.entries.append(entry)
-    return new Log(this.id, entrySet, [entry], this.clock)
+    return new Log(this.id, this.entries.append(entry), [entry], this.clock)
   }
 
   /**
@@ -121,9 +120,19 @@ class Log {
    * @returns {Object<{heads}>}
    */
   toJSON () {
-    return { id: this.id, heads: this.heads.map(e => e.hash) }
+    return { 
+      id: this.id, 
+      heads: this.heads.map(e => e.hash)
+    }
   }
 
+  toSnapshot () {
+    return {
+      id: this.id,
+      heads: this.heads,
+      entries: this.items,
+    }
+  }
   /**
    * Get the log as a Buffer
    * @returns {Buffer}

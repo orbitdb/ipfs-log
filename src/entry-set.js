@@ -12,14 +12,14 @@ const concatArrays = (res, val) => res.concat(val)
  * "A comprehensive study of Convergent and Commutative Replicated Data Types"
  * https://hal.inria.fr/inria-00555588
  */
-class EntrySet extends GSet {
+// class EntrySet extends GSet {
+class EntrySet {
   constructor (values) {
-    super()
     this._values = values || []
   }
 
   get values () {
-    return this._values.slice()
+    return this._values
   }
 
   get heads () {
@@ -43,9 +43,7 @@ class EntrySet extends GSet {
   }
 
   append (value) {
-    const values = this.values
-    values.push(value)
-    return new EntrySet(values)
+    return new EntrySet(this.values.concat([value]))
   }
 
   has (entry) {

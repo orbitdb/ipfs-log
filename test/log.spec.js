@@ -5,13 +5,12 @@ const async = require('asyncawait/async')
 const await = require('asyncawait/await')
 const rmrf = require('rimraf')
 const apis = require('./config/test-apis')
+const config = require('./config/ipfs-daemon.config')
 const LogCreator = require('./utils/log-creator')
 const bigLogString = require('./fixtures/big-log.fixture.js')
 const Log = require('../src/log-utils.js')
 const Entry = require('../src/entry')
 const EntrySet = require('../src/entry-set')
-
-const dataDir = './ipfs'
 
 let ipfs, ipfsDaemon
 
@@ -25,15 +24,15 @@ apis.forEach((IpfsDaemon) => {
     this.timeout(40000)
 
     before((done) => {
-      rmrf.sync(dataDir)
-      ipfs = new IpfsDaemon({ IpfsDataDir: dataDir })
+      rmrf.sync(config.daemon1.IpfsDataDir)
+      ipfs = new IpfsDaemon(config.daemon1)
       ipfs.on('error', done)
       ipfs.on('ready', () => done())
     })
 
     after(() => {
       ipfs.stop()
-      rmrf.sync(dataDir)
+      rmrf.sync(config.daemon1.IpfsDataDir)
     })
 
     describe('create', async(() => {
@@ -439,20 +438,13 @@ apis.forEach((IpfsDaemon) => {
 
           const items = log.values
           let i = 0
-          let prevDepth = 0
-          const callback = (hash, entry, parent, depth) => {
+          const callback = (hash, entry, depth) => {
             assert.notEqual(entry, null)
             assert.equal(hash, items[items.length - i - 1].hash)
             assert.equal(entry.hash, items[items.length - i - 1].hash)
             assert.equal(entry.payload, items[items.length - i - 1].payload)
-            assert.equal(depth, i)
-
-            if (i > 0) {
-              assert.equal(parent.payload, items[items.length - i].payload)
-            }
-
+            assert.equal(depth - 1, i)
             i ++
-            prevDepth = depth
           }
 
           const hash = await(Log.toMultihash(ipfs, log))
@@ -702,12 +694,15 @@ apis.forEach((IpfsDaemon) => {
       it('doesn\'t change original logs on join', async(() => {
         log1 = await(Log.append(ipfs, log1, "helloA1"))
         log2 = await(Log.append(ipfs, log2, "helloB1"))
+        log2 = await(Log.append(ipfs, log2, "helloB2"))
         const log3 = Log.join(log1, log2)
         const log4 = Log.join(log2, log1)
         assert.equal(log1.length, 1)
-        assert.equal(log2.length, 1)
+        assert.equal(log2.length, 2)
+        assert.equal(log3.length, 3)
+        assert.equal(log4.length, 3)
         assert.equal(last(log1.values).payload, 'helloA1')
-        assert.equal(last(log2.values).payload, 'helloB1')
+        assert.equal(last(log2.values).payload, 'helloB2')
       }))
 
       it('joins logs twice', async(() => {
@@ -1314,23 +1309,6 @@ apis.forEach((IpfsDaemon) => {
       }))
 
 
-      let prev = null
-      const onProgress = (hash, entry, parent, depth) => {
-        let padding = []
-        const isLast = parent ? parent.next.indexOf(hash) === parent.next.length - 1 : true
-        prev = entry
-
-        const amount = depth - 1
-        for (let i = 0; i < amount; i ++) {
-          padding.push("│ ")
-        }
-        const connectorChar = depth > 0 
-          ? (isLast ? "└─" : "├─")
-          : ""
-
-        console.log(padding.join("") + connectorChar + hash + " \"" + entry.payload)
-      }
-
       it('onProgress callback is fired for each entry', async(() => {
         const log1 = Log.create('A')
         let items1 = []
@@ -1343,16 +1321,12 @@ apis.forEach((IpfsDaemon) => {
 
         let i = 0
         let prevDepth = 0
-        const callback = (hash, entry, parent, depth) => {
+        const callback = (hash, entry, depth) => {
           assert.notEqual(entry, null)
           assert.equal(hash, items1[items1.length - i - 1].hash)
           assert.equal(entry.hash, items1[items1.length - i - 1].hash)
           assert.equal(entry.payload, items1[items1.length - i - 1].payload)
-          assert.equal(depth, i)
-
-          if (i > 0) {
-            assert.equal(parent.payload, items1[items1.length - i].payload)
-          }
+          assert.equal(depth - 1, i)
 
           i ++
           prevDepth = depth
@@ -1646,8 +1620,8 @@ apis.forEach((IpfsDaemon) => {
 
         e1 = await(Log.append(ipfs, e1, "DONE"))
         e2 = await(Log.append(ipfs, e2, "DONE"))
-        const f = await(Log.fromEntry(ipfs, last(e1.values), -1, [], onProgress))
-        const g = await(Log.fromEntry(ipfs, last(e2.values), -1, [], onProgress))
+        const f = await(Log.fromEntry(ipfs, last(e1.values), -1, []))
+        const g = await(Log.fromEntry(ipfs, last(e2.values), -1, []))
 
         assert.equal(f.toString(), bigLogString)
         assert.equal(g.toString(), bigLogString)

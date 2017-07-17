@@ -6,8 +6,8 @@ const Entry = require('./entry')
 
 class LogLoader {
   // Fetch log graphs in parallel
-  static fetchParallel (ipfs, hashes, length, exclude = [], concurrency) {
-    const fetchOne = (hash) => LogLoader.fetchAll(ipfs, hash, length, exclude)
+  static fetchParallel (ipfs, hashes, length, exclude = [], concurrency, onProgressCallback) {
+    const fetchOne = (hash) => LogLoader.fetchAll(ipfs, hash, length, exclude, 2000, onProgressCallback)
     const concatArrays = (arr1, arr2) => arr1.concat(arr2)
     const flatten = (arr) => arr.reduce(concatArrays, [])
     return pMap(hashes, fetchOne, { concurrency: Math.max(concurrency || hashes.length, 1) })
@@ -26,7 +26,7 @@ class LogLoader {
    * @param {function(hash, entry, parent, depth)} onProgressCallback
    * @returns {Promise<Array<Entry>>}
    */
-  static fetchAll (ipfs, hashes, amount, exclude = [], timeout = 2000) {
+  static fetchAll (ipfs, hashes, amount, exclude = [], timeout = 2000, onProgressCallback) {
     let result = []
     let cache = {}
     let loadingQueue = Array.isArray(hashes)
@@ -51,6 +51,8 @@ class LogLoader {
       if (cache[hash]) {
         const entry = cache[hash]
         entry.next.forEach(addToLoadingQueue)
+        if (onProgressCallback) 
+          onProgressCallback(hash, entry, result.length)
         return Promise.resolve()
       }
 
@@ -65,6 +67,8 @@ class LogLoader {
             entry.next.forEach(addToLoadingQueue)
             result.push(entry)
             cache[hash] = entry
+            if (onProgressCallback) 
+              onProgressCallback(hash, entry, result.length)
           }
         }
 
@@ -78,6 +82,6 @@ class LogLoader {
     return pWhilst(shouldFetchMore, fetchEntry)
       .then(() => result)
   }
-  }
+}
 
 module.exports = LogLoader

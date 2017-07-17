@@ -17,7 +17,7 @@ class Entry {
    * // { hash: "Qm...Foo", payload: "hello", next: [] }
    * @returns {Promise<Entry>}
    */
-  static create (ipfs, id, seq, data, next = [], clock) {
+  static create (ipfs, id, seq, data, next = [], clock, hash) {
     if (!isDefined(ipfs)) throw IpfsNotDefinedError()
     if (!isDefined(id)) throw new Error('Entry requires an id')
     // if (!isDefined(seq)) throw new Error('Entry requires a sequence number')
@@ -34,7 +34,12 @@ class Entry {
       payload: data, // Can be any JSON.stringifyable data
       next: nexts, // Array of Multihashes
       v: 0, // For future data structure updates, should currently always be 0
-      clock: clock ? clock.clone() : new Clock(id),
+      clock: new Clock(id, clock ? clock.time : null),
+    }
+
+    if (hash) {
+      entry.hash = hash
+      return Promise.resolve(entry)
     }
 
     return Entry.toMultihash(ipfs, entry)

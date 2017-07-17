@@ -296,7 +296,7 @@ class LogUtils {
     // Make sure we pass hashes instead of objects to the fetcher function
     const excludeHashes = exclude ? exclude.map(e => e.hash ? e.hash : e) : exclude
 
-    return LogLoader.fetchParallel(ipfs, sourceEntries.keys, length, excludeHashes)
+    return LogLoader.fetchParallel(ipfs, sourceEntries.keys, length, excludeHashes, null, onProgressCallback)
       .then((entries) => new EntrySet(entries))
       .then((entrySet) => {
         // Cap the result at the right size by taking the last n entries
@@ -330,8 +330,25 @@ class LogUtils {
       .then((dagNode) => JSON.parse(dagNode.toJSON().data))
       .then((logData) => {
         if (!logData.heads || !logData.id) throw NotALogError()
-        return LogLoader.fetchAll(ipfs, logData.heads, length, exclude)
+        return LogLoader.fetchAll(ipfs, logData.heads, length, exclude, 2000, onProgressCallback)
           .then((entries) => LogUtils.create(logData.id, entries, logData.heads))
+      })
+  }
+
+  static fromJSON (ipfs, json, length = -1, onProgressCallback) {
+    if (!isDefined(ipfs)) throw IpfsNotDefinedError()
+    const pMap = require('p-map')
+    const mapper = (e, idx) => {
+      return Entry.create(ipfs, e.id, e.seq, e.payload, e.next, e.clock, e.hash)
+        .then((entry) => {
+          onProgressCallback(entry.hash, entry, idx + 1, json.entries.length)
+          return entry
+        })
+    }
+    return pMap(length && length > -1 ? json.entries.slice(0, length) : json.entries, mapper, { concurrency: 4 })
+      .then((entries) => {
+        const heads = entries.filter(e => json.heads.map(a => a.hash).includes(e.hash))
+        return LogUtils.create(json.id, entries, heads)
       })
   }
 
