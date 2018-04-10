@@ -104,7 +104,7 @@ apis.forEach((IPFS) => {
         process.stdout.write('\r')
         process.stdout.write(`> Buffer1: ${buffer1.length} - Buffer2: ${buffer2.length}`)
         const log = await Log.fromMultihash(ipfs1, message.data.toString())
-        log1.join(log)
+        await log1.join(log)
         processing --
       }
 
@@ -117,7 +117,7 @@ apis.forEach((IPFS) => {
         process.stdout.write(`> Buffer1: ${buffer1.length} - Buffer2: ${buffer2.length}`)
         const exclude = log2.values.map((e) => e.hash)
         const log = await Log.fromMultihash(ipfs2, message.data.toString())
-        log2.join(log)
+        await log2.join(log)
         processing --
       }
 
@@ -172,8 +172,8 @@ apis.forEach((IPFS) => {
               await whileProcessingMessages(timeout)
 
               let result = new Log(ipfs1, 'A', null, null, null, 'peerA')
-              result.join(log1)
-              result.join(log2)
+              await result.join(log1)
+              await result.join(log2)
 
               assert.equal(buffer1.length, amount)
               assert.equal(buffer2.length, amount)
