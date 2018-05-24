@@ -219,8 +219,71 @@ class Log extends GSet {
     // Update the length
     this._length ++
     return entry
+  difference(log) {
+    let stack = Object.keys(log._headsIndex);
+    let traversed = {};
+    let res = {};
+
+    const pushToStack = hash => {
+      if (!traversed[hash] && !this.get(hash)) {
+        stack.push(hash);
+        traversed[hash] = true;
+      }
+    };
+
+    while (stack.length > 0) {
+      const hash = stack.shift();
+      const entry = log.get(hash);
+      if (entry && !this.get(hash) && entry.id === this.id) {
+        res[entry.hash] = entry;
+        traversed[entry.hash] = true;
+        entry.next.forEach(pushToStack);
+      }
+    }
+    return res;
   }
 
+  async verifyEntries(entries) {
+    const isTrue = e => e === true;
+    const getPubKey = e => (e.getPublic ? e.getPublic('hex') : e);
+    const checkAllKeys = (keys, entry) => {
+      const keyMatches = e => e === entry.key;
+      return keys.find(keyMatches);
+    };
+    const pubkeys = this._keys.map(getPubKey);
+
+    const verify = async entry => {
+      if (!entry.key) throw new Error("Entry doesn't have a public key");
+      if (!entry.sig) throw new Error("Entry doesn't have a signature");
+
+      if (this._keys.length === 1 && this._keys[0] === this._key) {
+        if (entry.id !== this.id)
+          throw new Error("Entry doesn't belong in this log (wrong ID)");
+      }
+
+      if (
+        this._keys.length > 0 &&
+        !this._keys.includes('*') &&
+        !checkAllKeys(this._keys.concat([this._key]), entry)
+      ) {
+        console.warn(
+          "Warning: Input log contains entries that are not allowed in this log. Logs weren't joined.",
+        );
+        return false;
+      }
+
+      try {
+        await Entry.verifyEntry(entry, this._keystore);
+      } catch (e) {
+        throw new Error(`Invalid signature in entry '${entry.hash}'`);
+      }
+
+      return true;
+    };
+
+    const checked = await pMap(entries, verify);
+    return checked.every(isTrue);
+  };
   /**
    * Join two logs
    *
@@ -236,118 +299,59 @@ class Log extends GSet {
    *
    * @returns {Promise<Log>}
    */
-  async join (log, size = -1) {
-    if (!isDefined(log)) throw LogError.LogNotDefinedError()
-    if (!Log.isLog(log)) throw LogError.NotALogError()
-
-    // Verify the entries
-    // TODO: move to Entry
-    const verifyEntries = async (entries) => {
-      const isTrue = e => e === true
-      const getPubKey = e => e.getPublic ? e.getPublic('hex') : e
-      const checkAllKeys = (keys, entry) => {
-        const keyMatches = e => e === entry.key
-        return keys.find(keyMatches)
-      }
-      const pubkeys = this._keys.map(getPubKey)
-
-      const verify = async (entry) => {
-        if (!entry.key) throw new Error("Entry doesn't have a public key")
-        if (!entry.sig) throw new Error("Entry doesn't have a signature")
-
-        if (this._keys.length === 1 && this._keys[0] === this._key ) {
-          if (entry.id !== this.id) 
-            throw new Error("Entry doesn't belong in this log (wrong ID)")
-        }
-
-        if (this._keys.length > 0 
-            && !this._keys.includes('*') 
-            && !checkAllKeys(this._keys.concat([this._key]), entry)) {
-          console.warn("Warning: Input log contains entries that are not allowed in this log. Logs weren't joined.")
-          return false
-        }
-
-        try {
-          await Entry.verifyEntry(entry, this._keystore)
-        } catch (e) {
-          throw new Error(`Invalid signature in entry '${entry.hash}'`)
-        }
-
-        return true
-      }
-
-      const checked = await pMap(entries, verify)
-      return checked.every(isTrue)
-    }
-
-    const difference = (log, exclude) => {
-      let stack = Object.keys(log._headsIndex)
-      let traversed = {}
-      let res = {}
-
-      const pushToStack = hash => {
-        if (!traversed[hash] && !exclude.get(hash)) {
-          stack.push(hash)
-          traversed[hash] = true
-        }
-      }
-
-      while (stack.length > 0) {
-        const hash = stack.shift()
-        const entry = log.get(hash)
-          if (entry && !exclude.get(hash) && entry.id === this.id) {
-          res[entry.hash] = entry
-          traversed[entry.hash] = true
-          entry.next.forEach(pushToStack)
-        }
-      }
-      return res
-    }
-
-    // Merge the entries
-    const newItems = difference(log, this)
+  async join(log, size = -1, newItems) {
+    if (!isDefined(log)) throw LogError.LogNotDefinedError();
+    if (!Log.isLog(log)) throw LogError.NotALogError();
 
     // if a key was given, verify the entries from the incoming log
     if (this._key && this._key.getPublic) {
-      const canJoin = await verifyEntries(Object.values(newItems))
+      const canJoin = await this.verifyEntries(Object.values(newItems));
       // Return early if any of the given entries didn't verify
-      if (!canJoin)
-        return this
+      if (!canJoin) return this;
     }
 
     // Update the internal entry index
-    this._entryIndex = Object.assign(this._entryIndex, newItems)
+    this._entryIndex = Object.assign(this._entryIndex, newItems);
 
     // Update the internal next pointers index
-    const addToNextsIndex = e => e.next.forEach(a => this._nextsIndex[a] = e.hash)
-    Object.values(newItems).forEach(addToNextsIndex)
+    const addToNextsIndex = e =>
+      e.next.forEach(a => (this._nextsIndex[a] = e.hash));
+    Object.values(newItems).forEach(addToNextsIndex);
 
     // Update the length
-    this._length += Object.values(newItems).length
+    this._length += Object.values(newItems).length;
 
     // Slice to the requested size
     if (size > -1) {
-      let tmp = this.values
-      tmp = tmp.slice(-size)
-      this._entryIndex = tmp.reduce(uniqueEntriesReducer, {})
-      this._length = Object.values(this._entryIndex).length
+      let tmp = this.values;
+      tmp = tmp.slice(-size);
+      this._entryIndex = tmp.reduce(uniqueEntriesReducer, {});
+      this._length = Object.values(this._entryIndex).length;
     }
 
     // Merge the heads
-    const notReferencedByNewItems = e => !nextsFromNewItems.find(a => a === e.hash)
-    const notInCurrentNexts = e => !this._nextsIndex[e.hash]
-    const nextsFromNewItems = Object.values(newItems).map(getNextPointers).reduce(flatMap, [])
-    const mergedHeads = Log.findHeads(Object.values(Object.assign({}, this._headsIndex, log._headsIndex)))
+    const notReferencedByNewItems = e =>
+      !nextsFromNewItems.find(a => a === e.hash);
+    const notInCurrentNexts = e => !this._nextsIndex[e.hash];
+    const nextsFromNewItems = Object.values(newItems)
+      .map(getNextPointers)
+      .reduce(flatMap, []);
+    const mergedHeads = Log.findHeads(
+      Object.values(Object.assign({}, this._headsIndex, log._headsIndex)),
+    )
       .filter(notReferencedByNewItems)
       .filter(notInCurrentNexts)
-      .reduce(uniqueEntriesReducer, {})
+      .reduce(uniqueEntriesReducer, {});
 
-    this._headsIndex = mergedHeads
+    this._headsIndex = mergedHeads;
 
     // Find the latest clock from the heads
-    const maxClock = Object.values(this._headsIndex).reduce(maxClockTimeReducer, 0)
-    this._clock = new Clock(this.clock.id, Math.max(this.clock.time, maxClock))
-    return this
+    const maxClock = Object.values(this._headsIndex).reduce(
+      maxClockTimeReducer,
+      0,
+    );
+    this._clock = new Clock(this.clock.id, Math.max(this.clock.time, maxClock));
+    return this;
   }
 
   /**
