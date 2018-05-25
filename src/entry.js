@@ -59,20 +59,6 @@ class Entry {
     return entry
   }
 
-  static async verifyEntry (entry, keystore) {
-    const e = Object.assign({}, {
-      hash: null,
-      id: entry.id,
-      payload: entry.payload,
-      next: entry.next,
-      v: entry.v,
-      clock: entry.clock,
-    })
-
-    const pubKey = await keystore.importPublicKey(entry.key)
-    await keystore.verify(entry.sig, pubKey, Buffer.from(JSON.stringify(e)))
-  }
-
   /**
    * Get the multihash of an Entry
    * @param {IPFS} [ipfs] An IPFS instance
