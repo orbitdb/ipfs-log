@@ -197,14 +197,6 @@ class Log extends GSet {
    * @param  {Entry} entry Entry to add
    * @return {Log}   New Log containing the appended value
    */
-  async append (data, pointerCount = 1) {
-    // Verify that we're allowed to append
-    if ((this._key && this._key.getPublic)
-        && !this._keys.includes(this._key.getPublic('hex')) 
-        && !this._keys.includes('*')) {
-      throw new Error("Not allowed to write")
-    }
-
     // Update the clock (find the latest clock)
     const newTime = Math.max(this.clock.time, this.heads.reduce(maxClockTimeReducer, 0)) + 1
     this._clock = new Clock(this.clock.id, newTime)
