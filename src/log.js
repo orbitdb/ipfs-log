@@ -197,6 +197,7 @@ class Log extends GSet {
    * @param  {Entry} entry Entry to add
    * @return {Log}   New Log containing the appended value
    */
+  async append(data, pointerCount = 1, decorateFn) {
     // Update the clock (find the latest clock)
     const newTime = Math.max(this.clock.time, this.heads.reduce(maxClockTimeReducer, 0)) + 1
     this._clock = new Clock(this.clock.id, newTime)
@@ -211,6 +212,8 @@ class Log extends GSet {
     // Update the length
     this._length ++
     return entry
+  };
+
   difference(log) {
     let stack = Object.keys(log._headsIndex);
     let traversed = {};
