@@ -17,7 +17,7 @@ class Entry {
    * // { hash: "Qm...Foo", payload: "hello", next: [] }
    * @returns {Promise<Entry>}
    */
-  static async create (ipfs, keystore, id, data, next = [], clock, signKey) {
+  static async create (ipfs, keystore, id, data, next = [], clock, signKey, decorateFn) {
     if (!isDefined(ipfs)) throw IpfsNotDefinedError()
     if (!isDefined(id)) throw new Error('Entry requires an id')
     if (!isDefined(data)) throw new Error('Entry requires data')
@@ -43,34 +43,26 @@ class Entry {
       clock: new Clock(clockId, clockTime),
     }
 
-    // If signing key was passedd, sign the enrty
+    // If signing key was passed, sign the entry
     if (keystore && signKey) {
-      entry = await Entry.signEntry(keystore, entry, signKey) 
+      entry = await Entry.signEntry(keystore, entry, signKey, decorateFn)
     }
 
     entry.hash = await Entry.toMultihash(ipfs, entry)
     return entry
   }
 
-  static async signEntry (keystore, entry, key) {
+  static async signEntry (keystore, entry, key, decorateFn) {
     const signature = await keystore.sign(key, Buffer.from(JSON.stringify(entry)))
     entry.sig = signature
     entry.key = key.getPublic('hex')
+
+    if (decorate) {
+      const chainSignature = await decorateFn(entry.key)
+      entry.chainSignature = chainSignature
+    }
+
     return entry
-  }
-
-  static async verifyEntry (entry, keystore) {
-    const e = Object.assign({}, {
-      hash: null,
-      id: entry.id,
-      payload: entry.payload,
-      next: entry.next,
-      v: entry.v,
-      clock: entry.clock,
-    })
-
-    const pubKey = await keystore.importPublicKey(entry.key)
-    await keystore.verify(entry.sig, pubKey, Buffer.from(JSON.stringify(e)))
   }
 
   /**
