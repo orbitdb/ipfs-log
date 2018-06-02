@@ -44,7 +44,7 @@ class Log extends GSet {
    * marked as invalid by this function will not be joined
    * @return {Log}                            Log
    */
-  constructor (ipfs, id, entries, heads, clock, key, keys = [], verifyEntry = null) {
+  constructor (ipfs, id, entries, heads, clock, key, keys = [], verifyEntry = null, decorateEntry = null) {
     if (!isDefined(ipfs)) {
       throw LogError.ImmutableDBNotDefinedError()
     }
@@ -69,6 +69,9 @@ class Log extends GSet {
 
     // Custom verification function
     this._verifyEntry = verifyEntry
+
+    // Custom signing function
+    this._decorateEntry = decorateEntry
 
     // Add entries to the internal cache
     entries = entries || []
@@ -219,7 +222,7 @@ class Log extends GSet {
     // Get the required amount of hashes to next entries (as per current state of the log)
     const nexts = Object.keys(this.traverse(this.heads, pointerCount))
     // Create the entry and add it to the internal cache
-    const entry = await Entry.create(this._storage, this._keystore, this.id, data, nexts, this.clock, this._key)
+    const entry = await Entry.create(this._storage, this._keystore, this.id, data, nexts, this.clock, this._key, this._decorateEntry)
     this._entryIndex[entry.hash] = entry
     nexts.forEach(e => this._nextsIndex[e] = entry.hash)
     this._headsIndex = {}

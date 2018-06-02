@@ -163,6 +163,12 @@ apis.forEach((IPFS) => {
         const log = new Log(ipfs, null, null, null, null, null, null, fn)
         assert.equal(log._verifyEntry, fn)
       })
+
+      it('sets the decorateEntry function', () => {
+        const fn = () => entry
+        const log = new Log(ipfs, null, null, null, null, null, null, null, fn)
+        assert.equal(log._decorateEntry, fn)
+      })
     })
 
     describe('toString', async () => {
