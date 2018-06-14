@@ -6,6 +6,7 @@ const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
 const config = require('./config/ipfs-daemon.config')
 const Log = require('../src/log.js')
+const DefaultACL = require('./default-acl')
 const MemStore = require('./utils/mem-store')
 
 const apis = [require('ipfs')]
@@ -121,11 +122,14 @@ apis.forEach((IPFS) => {
         processing --
       }
 
+      const acl1 = new DefaultACL(null, 'peerA')
+      const acl2 = new DefaultACL(null, 'peerB')
+
       beforeEach((done) => {
-        log1 = new Log(ipfs1, 'A', null, null, null, 'peerA')
-        log2 = new Log(ipfs2, 'A', null, null, null, 'peerB')
-        input1 = new Log(ipfs1, 'A', null, null, null, 'peerA')
-        input2 = new Log(ipfs2, 'A', null, null, null, 'peerB')
+        log1 = new Log(ipfs1, 'A', null, null, null, acl1)
+        log2 = new Log(ipfs2, 'A', null, null, null, acl2)
+        input1 = new Log(ipfs1, 'A', null, null, null, acl1)
+        input2 = new Log(ipfs2, 'A', null, null, null, acl2)
         ipfs1.pubsub.subscribe(channel, handleMessage, (err) => {
           if (err) 
             return done(err)
@@ -171,7 +175,7 @@ apis.forEach((IPFS) => {
               const timeout = 30000
               await whileProcessingMessages(timeout)
 
-              let result = new Log(ipfs1, 'A', null, null, null, 'peerA')
+              let result = new Log(ipfs1, 'A', null, null, null, acl1)
               await result.join(log1)
               await result.join(log2)
 

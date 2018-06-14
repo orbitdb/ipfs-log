@@ -5,7 +5,8 @@ const rmrf = require('rimraf')
 const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
 const Keystore = require('orbit-db-keystore')
-const Log = require('../src/log.js')
+const Log = require('../src/log')
+const ACL = require('../src/acl')
 
 const apis = [require('ipfs')]
 
@@ -44,7 +45,6 @@ apis.forEach((IPFS) => {
       key2 = keystore.getKey('B')
       key3 = keystore.getKey('C')
       ipfs = new IPFS(ipfsConf)
-      ipfs.keystore = keystore 
       ipfs.on('error', done)
       ipfs.on('ready', () => done())
     })
@@ -54,29 +54,38 @@ apis.forEach((IPFS) => {
         await ipfs.stop()
     })
 
+    // TODO: really an ACL test
     it('creates a signed log', () => {
-      const log = new Log(ipfs, 'A', null, null, null, key1)
+      const acl = new ACL(keystore, key1, [])
+      const log = new Log(ipfs, 'A', null, null, null, acl)
       assert.notEqual(log.id, null)
-      assert.deepEqual(log._key, key1)
-      assert.deepEqual(log._keys, [])
+      assert.equal(log._key, undefined)
+      assert.equal(log._keys, undefined)
+      assert.deepEqual(log._acl.getSigningKey(), key1)
+      assert.deepEqual(log._acl._keys, [])
     })
 
+    // TODO: really an ACL test
     it('takes an array of write-access public keys as an argument', () => {
-      const log = new Log(ipfs, 'A', null, null, null, key1, [key2.getPublic('hex'), key3.getPublic('hex')])
+      const acl = new ACL(keystore, key1, [key2.getPublic('hex'), key3.getPublic('hex')])
+      const log = new Log(ipfs, 'A', null, null, null, acl)
       assert.notEqual(log.id, null)
-      assert.deepEqual(log._key, key1)
-      assert.deepEqual(log._keys, [key2.getPublic('hex'), key3.getPublic('hex')])
+      assert.deepEqual(log._acl.getSigningKey(), key1)
+      assert.deepEqual(log._acl._keys, [key2.getPublic('hex'), key3.getPublic('hex')])
     })
 
+    // TODO: really an ACL test
     it('takes a single write-access public key as an argument', () => {
-      const log = new Log(ipfs, 'A', null, null, null, key1, key2.getPublic('hex'))
+      const acl = new ACL(keystore, key1, key2.getPublic('hex'))
+      const log = new Log(ipfs, 'A', null, null, null, acl)
       assert.notEqual(log.id, null)
-      assert.deepEqual(log._key, key1)
-      assert.deepEqual(log._keys, [key2.getPublic('hex')])
+      assert.deepEqual(log._acl.getSigningKey(), key1)
+      assert.deepEqual(log._acl._keys, [key2.getPublic('hex')])
     })
 
     it('entries contain a signature and a public signing key', async () => {
-      const log = new Log(ipfs, 'A', null, null, null, key1, [key1.getPublic('hex')])
+      const acl = new ACL(keystore, key1, [key1.getPublic('hex')])
+      const log = new Log(ipfs, 'A', null, null, null, acl)
       await log.append('one')
       assert.notEqual(log.values[0].sig, null)
       assert.equal(log.values[0].key, key1.getPublic('hex'))
@@ -90,8 +99,10 @@ apis.forEach((IPFS) => {
     })
 
     it('allows only the owner to write when write-access keys are defined', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [key1.getPublic('hex')])
-      const log2 = new Log(ipfs, 'B', null, null, null, key2)
+      const acl1 = new ACL(keystore, key1, [key1.getPublic('hex')])
+      const acl2 = new ACL(keystore, key2, [key1.getPublic('hex')])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'B', null, null, null, acl2)
 
       let err
       try {
@@ -105,8 +116,10 @@ apis.forEach((IPFS) => {
     })
 
     it('allows only the specified keys to write when write-access keys are defined', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
-      const log2 = new Log(ipfs, 'A', null, null, null, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl1 = new ACL(keystore, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl2 = new ACL(keystore, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'A', null, null, null, acl2)
 
       let err
       try {
@@ -125,8 +138,13 @@ apis.forEach((IPFS) => {
     })
 
     it('allows others than the owner to write', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [key2.getPublic('hex')])
-      const log2 = new Log(ipfs, 'A', null, null, null, key2, [key2.getPublic('hex')])
+      // Create access controllers
+      const acl1 = new ACL(keystore, key1, [key2.getPublic('hex')])
+      const acl2 = new ACL(keystore, key2, [key2.getPublic('hex')])
+
+      // Create logs
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'A', null, null, null, acl2)
 
       let err
       try {
@@ -145,8 +163,10 @@ apis.forEach((IPFS) => {
     })
 
     it('allows anyone to write', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, ['*'])
-      const log2 = new Log(ipfs, 'A', null, null, null, key2, ['*'])
+      const acl1 = new ACL(keystore, key1, ['*'])
+      const acl2 = new ACL(keystore, key2, ['*'])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'A', null, null, null, acl2)
 
       let err
       try {
@@ -165,8 +185,9 @@ apis.forEach((IPFS) => {
     })
 
     it('doesn\'t join logs with different IDs ', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, ['*'])
-      const log2 = new Log(ipfs, 'B', null, null, null, key1, ['*'])
+      const acl = new ACL(keystore, key1, ['*'])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl)
+      const log2 = new Log(ipfs, 'B', null, null, null, acl)
 
       let err
       try {
@@ -185,7 +206,8 @@ apis.forEach((IPFS) => {
     })
 
     it('doesn\'t allows the owner to write if write-keys defines non-owner key', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [key2.getPublic('hex')])
+      const acl = new ACL(keystore, key1, key2.getPublic('hex'))
+      const log1 = new Log(ipfs, 'A', null, null, null, acl)
 
       let err
       try {
@@ -197,7 +219,8 @@ apis.forEach((IPFS) => {
     })
 
     it('allows nobody to write when write-access keys are not defined', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [])
+      const acl = new ACL(keystore, key1, [])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl)
 
       let err
       try {
@@ -209,8 +232,10 @@ apis.forEach((IPFS) => {
     })
 
     it('throws an error if log is signed but trying to merge with an entry that doesn\'t have public signing key', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
-      const log2 = new Log(ipfs, 'A', null, null, null, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl1 = new ACL(keystore, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl2 = new ACL(keystore, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'A', null, null, null, acl2)
 
       let err
       try {
@@ -225,8 +250,10 @@ apis.forEach((IPFS) => {
     })
 
     it('throws an error if log is signed but trying to merge an entry that doesn\'t have a signature', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
-      const log2 = new Log(ipfs, 'A', null, null, null, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl1 = new ACL(keystore, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl2 = new ACL(keystore, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'A', null, null, null, acl2)
 
       let err
       try {
@@ -241,13 +268,14 @@ apis.forEach((IPFS) => {
     })
 
     it('throws an error if log is signed but the signature doesn\'t verify', async () => {
-
       const replaceAt = (str, index, replacement) => {
         return str.substr(0, index) + replacement+ str.substr(index + replacement.length)
       }
 
-      const log1 = new Log(ipfs, 'A', null, null, null, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
-      const log2 = new Log(ipfs, 'A', null, null, null, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl1 = new ACL(keystore, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const acl2 = new ACL(keystore, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'A', null, null, null, acl2)
       let err
 
       try {
@@ -258,9 +286,27 @@ apis.forEach((IPFS) => {
       } catch (e) {
         err = e.toString()
       }
-      assert.equal(err, `Error: Invalid signature in entry '${log2.values[0].hash}'`)
+      assert.equal(err, `Error: Invalid signature '${log2.values[0].sig}'`)
       assert.equal(log1.values.length, 1)
       assert.equal(log1.values[0].payload, 'one')
+    })
+
+    it('throws an error if entry doesn\'t have append access', async () => {
+      const acl1 = new ACL(keystore, key1, [key1.getPublic('hex')])
+      const acl2 = new ACL(keystore, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
+      const log1 = new Log(ipfs, 'A', null, null, null, acl1)
+      const log2 = new Log(ipfs, 'A', null, null, null, acl2)
+
+      let err
+      try {
+        await log1.append('one')
+        await log2.append('two')
+        // log2.values[0].key = 'XXYYZZ'
+        await log1.join(log2)
+      } catch (e) {
+        err = e.toString()
+      }
+      assert.equal(err, 'Error: Input log contains entries that are not allowed in this log')
     })
   })
 })

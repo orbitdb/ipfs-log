@@ -2,14 +2,15 @@
 
 const Entry = require('../../src/entry')
 const Log = require('../../src/log.js')
+const DefaultACL = require('../default-acl')
 
 class LogCreator {
   static async createLog1 (ipfs) {
     const create = async () => {
-      let logA = new Log(ipfs, 'X', null, null, null, 'A')
-      let logB = new Log(ipfs, 'X', null, null, null, 'B')
-      let log3 = new Log(ipfs, 'X', null, null, null, '3')
-      let log  = new Log(ipfs, 'X', null, null, null, 'log')
+      let logA = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'A'))
+      let logB = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'B'))
+      let log3 = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, '3'))
+      let log  = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'log'))
 
       for(let i = 1; i <= 5; i ++) {
         await logA.append('entryA' + i)
@@ -46,9 +47,9 @@ class LogCreator {
     let expectedData = []
 
     const create = async () => {
-      let logA = new Log(ipfs, 'X', null, null, null, 'A')
-      let logB = new Log(ipfs, 'X', null, null, null, 'B')
-      let log  = new Log(ipfs, 'X', null, null, null, 'log')
+      let logA = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'A'))
+      let logB = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'B'))
+      let log  = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'log'))
       for(let i = 1; i <= amount; i ++) {
         await logA.append('entryA' + i)
         await logB.join(logA)

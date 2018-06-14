@@ -17,7 +17,7 @@ class Entry {
    * // { hash: "Qm...Foo", payload: "hello", next: [] }
    * @returns {Promise<Entry>}
    */
-  static async create (ipfs, keystore, id, data, next = [], clock, signKey) {
+  static async create (ipfs, acl, id, data, next = [], clock) {
     if (!isDefined(ipfs)) throw IpfsNotDefinedError()
     if (!isDefined(id)) throw new Error('Entry requires an id')
     if (!isDefined(data)) throw new Error('Entry requires data')
@@ -31,7 +31,7 @@ class Entry {
     // Take the id of the given clock by default,
     // if clock not given, take the signing key if it's a Key instance,
     // or if none given, take the id as the clock id
-    const clockId = clock ? clock.id : (signKey ? signKey.getPublic('hex') : id)
+    const clockId = clock ? clock.id : (acl ? acl.getPublicSigningKey('hex') : id)
     const clockTime = clock ? clock.time : null
 
     let entry = {
@@ -43,23 +43,27 @@ class Entry {
       clock: new Clock(clockId, clockTime),
     }
 
-    // If signing key was passedd, sign the enrty
-    if (keystore && signKey) {
-      entry = await Entry.signEntry(keystore, entry, signKey) 
+    // If acl was passed, sign the entry (=authorize)
+    if (acl) {
+      entry = await Entry.sign(entry, acl) 
     }
 
     entry.hash = await Entry.toMultihash(ipfs, entry)
     return entry
   }
 
-  static async signEntry (keystore, entry, key) {
-    const signature = await keystore.sign(key, Buffer.from(JSON.stringify(entry)))
+  static async sign (entry, acl) {
+    const signature = await acl.sign(entry)
     entry.sig = signature
-    entry.key = key.getPublic('hex')
+    entry.key = acl.getPublicSigningKey('hex')
     return entry
   }
 
-  static async verifyEntry (entry, keystore) {
+  static async verify (entry, acl) {
+    if (!entry.key) throw new Error("Entry doesn't have a public key")
+    if (!entry.sig) throw new Error("Entry doesn't have a signature")
+    if (!Entry.isEntry(entry)) throw new Error("Not a valid Log entry")
+
     const e = Object.assign({}, {
       hash: null,
       id: entry.id,
@@ -69,8 +73,8 @@ class Entry {
       clock: entry.clock,
     })
 
-    const pubKey = await keystore.importPublicKey(entry.key)
-    await keystore.verify(entry.sig, pubKey, Buffer.from(JSON.stringify(e)))
+    // Throws an error if verification fails
+    return await acl.verify(entry.key, entry.sig, e)
   }
 
   /**

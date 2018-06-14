@@ -6,6 +6,7 @@ const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
 const Log = require('../src/log')
 const EntryIO = require('../src/entry-io')
+const DefaultACL = require('./default-acl')
 
 const apis = [require('ipfs')]
 
@@ -144,9 +145,9 @@ apis.forEach((IPFS) => {
 
     it('load only 10 entries and then expand to max from a log with 100 entries', async () => {
       const count = 30
-      let log =  new Log(ipfs, 'X', null, null, null, 'A')
-      let log2 = new Log(ipfs, 'X', null, null, null, 'B')
-      let log3 = new Log(ipfs, 'X', null, null, null, 'C')
+      let log =  new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'A'))
+      let log2 = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'B'))
+      let log3 = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'C'))
       for (let i = 1; i <= count; i ++) {
         await log.append('hello' + i)
         if (i % 10 === 0) {
@@ -154,14 +155,14 @@ apis.forEach((IPFS) => {
           await log2.join(log)
         }
         if (i % 25 === 0) {
-          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads))
+          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads), null, new DefaultACL(null, 'C'))
           await log3.append('--' + i)
         }
       }
 
       await log3.join(log2)
 
-      const log4 = new Log(ipfs, 'X', null, null, null, 'D')
+      const log4 = new Log(ipfs, 'X', null, null, null, new DefaultACL(null, 'D'))
       await log4.join(log2)
       await log4.join(log3)
 
