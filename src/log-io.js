@@ -82,7 +82,7 @@ class LogIO {
       })
   }
 
-  static fromJSON (ipfs, json, length = -1, key, timeout, onProgressCallback) {
+  static fromJSON (ipfs, json, length = -1, timeout, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     return EntryIO.fetchParallel(ipfs, json.heads.map(e => e.hash), length, [], 16, timeout, onProgressCallback)
       .then((entries) => {

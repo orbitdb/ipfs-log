@@ -18,6 +18,9 @@ const repoConf = {
 
 const channel = 'XXX'
 
+const sign = () => '-'
+const verification = () => true
+
 // Shared database name
 const waitForPeers = (ipfs, channel) => {
   return new Promise((resolve, reject) => {
@@ -80,10 +83,10 @@ apis.forEach((IPFS) => {
     })
 
     after(async () => {
-      if (ipfs1) 
+      if (ipfs1)
         await ipfs1.stop()
 
-      if (ipfs2) 
+      if (ipfs2)
         await ipfs2.stop()
     })
 
@@ -122,17 +125,17 @@ apis.forEach((IPFS) => {
       }
 
       beforeEach((done) => {
-        log1 = new Log(ipfs1, 'A', null, null, null, 'peerA')
-        log2 = new Log(ipfs2, 'A', null, null, null, 'peerB')
-        input1 = new Log(ipfs1, 'A', null, null, null, 'peerA')
-        input2 = new Log(ipfs2, 'A', null, null, null, 'peerB')
+        log1 = new Log(ipfs1, 'A', null, null, null, sign, verification, 'peerA')
+        log2 = new Log(ipfs2, 'A', null, null, null, sign, verification, 'peerB')
+        input1 = new Log(ipfs1, 'A', null, null, null, sign, verification, 'peerA')
+        input2 = new Log(ipfs2, 'A', null, null, null, sign, verification, 'peerB')
         ipfs1.pubsub.subscribe(channel, handleMessage, (err) => {
-          if (err) 
+          if (err)
             return done(err)
           ipfs2.pubsub.subscribe(channel, handleMessage2, (err) => {
-            if (err) 
+            if (err)
               done(err)
-            else 
+            else
               done()
           })
         })
@@ -171,7 +174,7 @@ apis.forEach((IPFS) => {
               const timeout = 30000
               await whileProcessingMessages(timeout)
 
-              let result = new Log(ipfs1, 'A', null, null, null, 'peerA')
+              let result = new Log(ipfs1, 'A', null, null, null, sign, verification, 'peerA')
               await result.join(log1)
               await result.join(log2)
 

@@ -27,7 +27,7 @@ apis.forEach((IPFS) => {
 
     before((done) => {
       rmrf.sync(dataDir)
-      ipfs = new IPFS({ 
+      ipfs = new IPFS({
         repo: new IPFSRepo(dataDir, repoConf),
         start: true,
         EXPERIMENTAL: {
@@ -41,7 +41,7 @@ apis.forEach((IPFS) => {
     })
 
     after(async () => {
-      if (ipfs) 
+      if (ipfs)
         await ipfs.stop()
     })
 
@@ -144,9 +144,11 @@ apis.forEach((IPFS) => {
 
     it('load only 10 entries and then expand to max from a log with 100 entries', async () => {
       const count = 30
-      let log =  new Log(ipfs, 'X', null, null, null, 'A')
-      let log2 = new Log(ipfs, 'X', null, null, null, 'B')
-      let log3 = new Log(ipfs, 'X', null, null, null, 'C')
+      const sign = () => '-'
+      const verification = () => true
+      let log =  new Log(ipfs, 'X', null, null, null, sign, verification, 'A')
+      let log2 = new Log(ipfs, 'X', null, null, null, sign, verification, 'B')
+      let log3 = new Log(ipfs, 'X', null, null, null, sign, verification, 'C')
       for (let i = 1; i <= count; i ++) {
         await log.append('hello' + i)
         if (i % 10 === 0) {
@@ -154,14 +156,14 @@ apis.forEach((IPFS) => {
           await log2.join(log)
         }
         if (i % 25 === 0) {
-          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads))
+          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads), null, sign, verification, 'C')
           await log3.append('--' + i)
         }
       }
 
       await log3.join(log2)
 
-      const log4 = new Log(ipfs, 'X', null, null, null, 'D')
+      const log4 = new Log(ipfs, 'X', null, null, null, sign, verification, 'D')
       await log4.join(log2)
       await log4.join(log3)
 
