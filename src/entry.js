@@ -74,7 +74,7 @@ class Entry {
     })
 
     // Throws an error if verification fails
-    return await acl.verify(entry.key, entry.sig, e)
+    return acl.verify(entry.key, entry.sig, e)
   }
 
   /**
