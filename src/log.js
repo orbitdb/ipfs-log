@@ -354,16 +354,15 @@ class Log extends GSet {
    * @param {string} hash        Multihash (as a Base58 encoded string) to create the log from
    * @param {Number} [length=-1] How many items to include in the log
    * @param {Function(hash, entry, parent, depth)} onProgressCallback
-   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}      New Log
    */
-  static fromMultihash (ipfs, hash, length = -1, exclude, acl, onProgressCallback, verifyEntry) {
+  static fromMultihash (ipfs, hash, length = -1, exclude, acl, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromMultihash(ipfs, hash, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, acl, verifyEntry))
+      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, acl))
   }
 
   /**
@@ -372,16 +371,15 @@ class Log extends GSet {
    * @param {string} hash        Multihash (as a Base58 encoded string) of the Entry from which to create the log from
    * @param {Number} [length=-1] How many entries to include in the log
    * @param {Function(hash, entry, parent, depth)} onProgressCallback
-   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}      New Log
    */
-  static fromEntryHash (ipfs, hash, id, length = -1, exclude, acl, onProgressCallback, verifyEntry) {
+  static fromEntryHash (ipfs, hash, id, length = -1, exclude, acl, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(hash)) throw new Error("'hash' must be defined")
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntryHash(ipfs, hash, id, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, id, data.values, null, null, acl, verifyEntry))
+      .then((data) => new Log(ipfs, id, data.values, null, null, acl))
   }
 
   /**
@@ -390,15 +388,14 @@ class Log extends GSet {
    * @param {Object} json        Log snapshot as JSON object
    * @param {Number} [length=-1] How many entries to include in the log
    * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
-   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}      New Log
    */
-  static fromJSON (ipfs, json, length = -1, acl, timeout, onProgressCallback, verifyEntry) {
+  static fromJSON (ipfs, json, length = -1, acl, timeout, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromJSON(ipfs, json, length, timeout, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, acl, verifyEntry))
+      .then((data) => new Log(ipfs, data.id, data.values, null, null, acl))
   }
 
   /**
@@ -408,16 +405,15 @@ class Log extends GSet {
    * @param {Number}              [length=-1]   How many entries to include. Default: infinite.
    * @param {Array<Entry|string>} [exclude]     Array of entries or hashes or entries to not fetch (foe eg. cached entries)
    * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
-   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}       New Log
    */
-  static fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback, verifyEntry) {
+  static fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, null, verifyEntry))
+      .then((data) => new Log(ipfs, data.id, data.values, null, null, null))
   }
 
   /**
