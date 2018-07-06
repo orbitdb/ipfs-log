@@ -374,8 +374,8 @@ apis.forEach((IPFS) => {
           await log1.append('one')
           await log2.append('two')
           await log3.append('three')
-          log1.join(log2)
-          log1.join(log3)
+          await log1.join(log2)
+          await log1.join(log3)
           const hash = await log1.toMultihash()
           const res = await Log.fromMultihash(ipfs, hash)
           assert.equal(res.length, 3)
@@ -612,7 +612,7 @@ apis.forEach((IPFS) => {
         assert.equal(logB.length, items3.length + items2.length + items1.length)
 
         try {
-          logA.join(logB)
+          await logA.join(logB)
         } catch (e) {
           console.error(e)
         }
@@ -649,8 +649,8 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2)
-        log1.join(log2)
+        await log1.join(log2)
+        await log1.join(log2)
 
         const expectedData = [ 
           'helloA1', 'helloB1', 'helloA2', 'helloB2',
@@ -668,8 +668,8 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2)
-        log2.join(log1)
+        await log1.join(log2)
+        await log2.join(log1)
 
 
         const expectedData = [ 
@@ -684,11 +684,11 @@ apis.forEach((IPFS) => {
       it('joins logs twice', async () => {
         await log1.append('helloA1')
         await log2.append('helloB1')
-        log2.join(log1)
+        await log2.join(log1)
 
         await log1.append('helloA2')
         await log2.append('helloB2')
-        log2.join(log1)
+        await log2.join(log1)
 
         const expectedData = [ 
           'helloA1', 'helloB1', 'helloA2', 'helloB2',
@@ -701,12 +701,12 @@ apis.forEach((IPFS) => {
       it('joins 2 logs two ways', async () => {
         await log1.append('helloA1')
         await log2.append('helloB1')
-        log2.join(log1) // Make sure we keep the original log id
-        log1.join(log2)
+        await log2.join(log1) // Make sure we keep the original log id
+        await log1.join(log2)
 
         await log1.append('helloA2')
         await log2.append('helloB2')
-        log2.join(log1)
+        await log2.join(log1)
 
         const expectedData = [
           'helloA1', 'helloB1', 'helloA2', 'helloB2', 
@@ -725,9 +725,9 @@ apis.forEach((IPFS) => {
         await log3.append('helloC2')
         await log4.append('helloD1')
         await log4.append('helloD2')
-        log1.join(log2)
-        log1.join(log3)
-        log1.join(log4)
+        await log1.join(log2)
+        await log1.join(log3)
+        await log1.join(log4)
 
         const expectedData = [ 
           'helloA1',
@@ -753,12 +753,12 @@ apis.forEach((IPFS) => {
         await log3.append('helloC2')
         await log4.append('helloD1')
         await log4.append('helloD2')
-        log1.join(log2)
-        log1.join(log3)
-        log1.join(log4)
-        log2.join(log1)
-        log2.join(log3)
-        log2.join(log4)
+        await log1.join(log2)
+        await log1.join(log3)
+        await log1.join(log4)
+        await log2.join(log1)
+        await log2.join(log3)
+        await log2.join(log4)
 
         assert.equal(log1.length, 8)
         assert.deepEqual(log1.values.map(e => e.payload), log2.values.map(e => e.payload))
@@ -767,7 +767,7 @@ apis.forEach((IPFS) => {
       it('joins logs and updates clocks', async () => {
         await log1.append('helloA1')
         await log2.append('helloB1')
-        log2.join(log1)
+        await log2.join(log1)
         await log1.append('helloA2')
         await log2.append('helloB2')
 
@@ -776,28 +776,28 @@ apis.forEach((IPFS) => {
         assert.equal(log1.clock.time, 2)
         assert.equal(log2.clock.time, 2)
 
-        log3.join(log1)
+        await log3.join(log1)
         assert.equal(log3.id, 'X')
         assert.equal(log3.clock.id, 'C')
         assert.equal(log3.clock.time, 2)
 
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log1.join(log3)
-        log1.join(log2)
+        await log1.join(log3)
+        await log1.join(log2)
         await log4.append('helloD1')
         await log4.append('helloD2')
-        log4.join(log2)
-        log4.join(log1)
-        log4.join(log3)
+        await log4.join(log2)
+        await log4.join(log1)
+        await log4.join(log3)
         await log4.append('helloD3')
         await log4.append('helloD4')
 
-        log1.join(log4)
-        log4.join(log1)
+        await log1.join(log4)
+        await log4.join(log1)
         await log4.append('helloD5')
         await log1.append('helloA5')
-        log4.join(log1)
+        await log4.join(log1)
         assert.deepEqual(log4.clock.id, 'D')
         assert.deepEqual(log4.clock.time, 7)
 
@@ -830,31 +830,31 @@ apis.forEach((IPFS) => {
 
       it('joins logs from 4 logs', async () => {
         await log1.append('helloA1')
-        log1.join(log2)
+        await log1.join(log2)
         await log2.append('helloB1')
-        log2.join(log1)
+        await log2.join(log1)
         await log1.append('helloA2')
         await log2.append('helloB2')
 
-        log1.join(log3)
+        await log1.join(log3)
         assert.equal(log1.id, 'X')
         assert.equal(log1.clock.id, 'A')
         assert.equal(log1.clock.time, 2)
 
-        log3.join(log1)
+        await log3.join(log1)
         assert.equal(log3.id, 'X')
         assert.equal(log3.clock.id, 'C')
         assert.equal(log3.clock.time, 2)
 
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log1.join(log3)
-        log1.join(log2)
+        await log1.join(log3)
+        await log1.join(log2)
         await log4.append('helloD1')
         await log4.append('helloD2')
-        log4.join(log2)
-        log4.join(log1)
-        log4.join(log3)
+        await log4.join(log2)
+        await log4.join(log1)
+        await log4.join(log3)
         await log4.append('helloD3')
         await log4.append('helloD4')
 
@@ -1278,8 +1278,8 @@ apis.forEach((IPFS) => {
         await logX.append('3')
         const d = await Log.fromEntry(ipfs, last(logX.values))
 
-        c.join(d)
-        d.join(c)
+        await c.join(d)
+        await d.join(c)
 
         await c.append('DONE')
         await d.append('DONE')
@@ -1303,14 +1303,14 @@ apis.forEach((IPFS) => {
           await log2.append('entryB' + i)
         }
 
-        log3.join(log1)
-        log3.join(log2)
+        await log3.join(log1)
+        await log3.join(log2)
 
         for(let i = 6; i <= 10; i ++) {
           await log1.append('entryA' + i)
         }
 
-        log1.join(log3)
+        await log1.join(log3)
 
         for(let i = 11; i <= 15; i ++) {
           await log1.append('entryA' + i)
@@ -1341,16 +1341,16 @@ apis.forEach((IPFS) => {
           await logB.append('entryB' + i)
         }
 
-        log3.join(logA)
-        log3.join(logB)
+        await log3.join(logA)
+        await log3.join(logB)
 
         for(let i = 6; i <= 10; i ++) {
           await logA.append('entryA' + i)
         }
 
-        log.join(log3)
+        await log.join(log3)
         await log.append('entryC0')
-        log.join(logA, 16)
+        await log.join(logA, 16)
 
         const expectedData = [ 
           'entryA1', 'entryB1', 'entryA2', 'entryB2', 
@@ -1451,17 +1451,17 @@ apis.forEach((IPFS) => {
           await logB.append('entryB' + i, nextPointerAmount)
         }
 
-        log3.join(logA)
-        log3.join(logB)
+        await log3.join(logA)
+        await log3.join(logB)
 
         for(let i = 6; i <= 10; i ++) {
           await logA.append('entryA' + i, nextPointerAmount)
         }
 
-        log.join(log3)
+        await log.join(log3)
         await log.append('entryC0', nextPointerAmount)
 
-        log.join(logA)
+        await log.join(logA)
 
         const mh = await log.toMultihash()
 
@@ -1517,17 +1517,17 @@ apis.forEach((IPFS) => {
           await logB.append('entryB' + i, nextPointersAmount)
         }
 
-        log3.join(logA)
-        log3.join(logB)
+        await log3.join(logA)
+        await log3.join(logB)
 
         for(let i = 6; i <= 10; i ++) {
           await logA.append('entryA' + i, nextPointersAmount)
         }
 
-        log.join(log3)
+        await log.join(log3)
         await log.append('entryC0', nextPointersAmount)
 
-        log.join(logA)
+        await log.join(logA)
 
         const mh = await log.toMultihash()
 
@@ -1606,7 +1606,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
 
-        log2.join(log1)
+        await log2.join(log1)
         await log2.append('helloB2')
         const expectedHead = last(log2.values)
 
@@ -1626,7 +1626,7 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
         const expectedHead2 = last(log2.values)
 
-        log1.join(log2)
+        await log1.join(log2)
 
         const heads = log1.heads
         assert.equal(heads.length, 2)
@@ -1644,7 +1644,7 @@ apis.forEach((IPFS) => {
         await log2.append('helloB1')
         await log2.append('helloB2')
 
-        log1.join(log2)
+        await log1.join(log2)
 
         await log2.append('helloB3')
 
@@ -1653,7 +1653,7 @@ apis.forEach((IPFS) => {
         const expectedHead2 = last(log2.values)
         const expectedHead1 = last(log1.values)
 
-        log1.join(log2)
+        await log1.join(log2)
 
         const heads = log1.heads
         assert.equal(heads.length, 2)
@@ -1670,16 +1670,16 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2)
+        await log1.join(log2)
         await log1.append('helloA3')
         await log1.append('helloA4')
         const expectedHead1 = last(log1.values)
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log2.join(log3)
+        await log2.join(log3)
         await log2.append('helloB3')
         const expectedHead2 = last(log2.values)
-        log1.join(log2)
+        await log1.join(log2)
 
         const heads = log1.heads
         assert.equal(heads.length, 2)
@@ -1696,7 +1696,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2)
+        await log1.join(log2)
         await log1.append('helloA3')
         await log1.append('helloA4')
         const expectedHead1 = last(log1.values)
@@ -1705,8 +1705,8 @@ apis.forEach((IPFS) => {
         await log3.append('helloC2')
         const expectedHead2 = last(log2.values)
         const expectedHead3 = last(log3.values)
-        log1.join(log2)
-        log1.join(log3)
+        await log1.join(log2)
+        await log1.join(log3)
 
         const heads = log1.heads
         assert.equal(heads.length, 3)
@@ -1734,7 +1734,7 @@ apis.forEach((IPFS) => {
         let log2 = new Log(ipfs, 'A')
         await log1.append('helloA1')
         await log2.append('helloB1')
-        log1.join(log2)
+        await log1.join(log2)
         assert.equal(log1.tails.length, 2)
         assert.equal(Entry.isEntry(log1.tails[0]), true)
         assert.equal(Entry.isEntry(log1.tails[1]), true)
@@ -1747,7 +1747,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2, 2)
+        await log1.join(log2, 2)
         assert.equal(log1.tailHashes.length, 2)
       })
 
@@ -1756,7 +1756,7 @@ apis.forEach((IPFS) => {
         let log2 = new Log(ipfs, 'A')
         await log1.append('helloA1')
         await log2.append('helloB1')
-        log1.join(log2)
+        await log1.join(log2)
         assert.equal(log1.tailHashes.length, 0)
       })
 
@@ -1767,7 +1767,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2)
+        await log1.join(log2)
         const log4 = await Log.fromEntry(ipfs, log1.heads, 2)
         assert.equal(log4.length, 2)
         assert.equal(log4.tails.length, 2)
@@ -1783,9 +1783,9 @@ apis.forEach((IPFS) => {
         await log1.append('helloX1')
         await log2.append('helloB1')
         await log3.append('helloA1')
-        log3.join(log1)
-        log3.join(log2)
-        log4.join(log3)
+        await log3.join(log1)
+        await log3.join(log2)
+        await log4.join(log3)
         assert.equal(log4.tails.length, 3)
         assert.equal(log4.tails[0].id, 'XX')
         assert.equal(log4.tails[0].clock.id, 'A')
@@ -1812,8 +1812,8 @@ apis.forEach((IPFS) => {
         await log3.append('helloC2')
 
         // a + (b + c)
-        log2.join(log3)
-        log1.join(log2)
+        await log2.join(log3)
+        await log1.join(log2)
 
         const res1 = log1.values.slice()//.map((e) => e.hash).join(",")
 
@@ -1828,8 +1828,8 @@ apis.forEach((IPFS) => {
         await log3.append('helloC2')
 
         // (a + b) + c
-        log1.join(log2)
-        log3.join(log1)
+        await log1.join(log2)
+        await log3.join(log1)
 
         const res2 = log3.values.slice()//.map((e) => e.hash).join(",")
 
@@ -1847,7 +1847,7 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
 
         // b + a
-        log2.join(log1)
+        await log2.join(log1)
         const res1 = log2.values.slice()//.map((e) => e.hash).join(",")
 
         log1 = new Log(ipfs, 'X', null, null, null, 'A')
@@ -1858,7 +1858,7 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
 
         // a + b
-        log1.join(log2)
+        await log1.join(log2)
         const res2 = log1.values.slice()//.map((e) => e.hash).join(",")
 
         // commutativity: a + b == b + a
@@ -1876,7 +1876,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log2.join(log1)
+        await log2.join(log1)
         const resA1 = log2.toString()
 
         log1 = new Log(ipfs, 'X', null, null, null, 'A')
@@ -1885,7 +1885,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2)
+        await log1.join(log2)
         const resA2 = log1.toString()
 
         assert.equal(resA1, resA2)
@@ -1897,7 +1897,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log1.join(log2)
+        await log1.join(log2)
         const resB1 = log1.toString()
 
         log1 = new Log(ipfs, 'X', null, null, null, 'A')
@@ -1906,7 +1906,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log2.append('helloB1')
         await log2.append('helloB2')
-        log2.join(log1)
+        await log2.join(log1)
         const resB2 = log2.toString()
 
         assert.equal(resB1, resB2)
@@ -1918,7 +1918,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log3.join(log1)
+        await log3.join(log1)
         const resC1 = log3.toString()
 
         log1 = new Log(ipfs, 'X', null, null, null, 'A')
@@ -1927,7 +1927,7 @@ apis.forEach((IPFS) => {
         await log1.append('helloA2')
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log1.join(log3)
+        await log1.join(log3)
         const resC2 = log1.toString()
 
         assert.equal(resC1, resC2)
@@ -1939,7 +1939,7 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log3.join(log2)
+        await log3.join(log2)
         const resD1 = log3.toString()
 
         log2 = new Log(ipfs, 'X', null, null, null, 'B')
@@ -1948,7 +1948,7 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log2.join(log3)
+        await log2.join(log3)
         const resD2 = log2.toString()
 
         assert.equal(resD1, resD2)
@@ -1963,8 +1963,8 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log1.join(log2)
-        log1.join(log3)
+        await log1.join(log2)
+        await log1.join(log3)
         const logLeft = log1.toString()
 
         log1 = new Log(ipfs, 'X', null, null, null, 'A')
@@ -1976,8 +1976,8 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
         await log3.append('helloC1')
         await log3.append('helloC2')
-        log3.join(log2)
-        log3.join(log1)
+        await log3.join(log2)
+        await log3.join(log1)
         const logRight = log3.toString()
 
         assert.equal(logLeft, logRight)
