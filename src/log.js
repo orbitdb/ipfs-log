@@ -4,7 +4,7 @@ const pMap = require('p-map')
 const GSet = require('./g-set')
 const Entry = require('./entry')
 const LogIO = require('./log-io')
-const LogError = require('./log-errors')
+const { IpfsNotDefinedError, LogNotDefinedError, NotALogError } = require('./custom-errors')
 const Clock = require('./lamport-clock')
 const isDefined = require('./utils/is-defined')
 const _uniques = require('./utils/uniques')
@@ -41,7 +41,7 @@ class Log extends GSet {
    */
   constructor (ipfs, id, entries, heads, clock, key, keys = []) {
     if (!isDefined(ipfs)) {
-      throw LogError.ImmutableDBNotDefinedError()
+      throw new IpfsNotDefinedError()
     }
 
     if (isDefined(entries) && !Array.isArray(entries)) {
@@ -59,7 +59,7 @@ class Log extends GSet {
 
     // Signing related setup
     this._keystore = this._storage.keystore
-    this._key = key 
+    this._key = key
     this._keys = Array.isArray(keys) ? keys : [keys]
 
     // Add entries to the internal cache
@@ -200,7 +200,7 @@ class Log extends GSet {
   async append (data, pointerCount = 1) {
     // Verify that we're allowed to append
     if ((this._key && this._key.getPublic)
-        && !this._keys.includes(this._key.getPublic('hex')) 
+        && !this._keys.includes(this._key.getPublic('hex'))
         && !this._keys.includes('*')) {
       throw new Error("Not allowed to write")
     }
@@ -237,8 +237,8 @@ class Log extends GSet {
    * @returns {Promise<Log>}
    */
   async join (log, size = -1) {
-    if (!isDefined(log)) throw LogError.LogNotDefinedError()
-    if (!Log.isLog(log)) throw LogError.NotALogError()
+    if (!isDefined(log)) throw new LogNotDefinedError()
+    if (!Log.isLog(log)) throw new NotALogError()
 
     // Verify the entries
     // TODO: move to Entry
@@ -256,12 +256,12 @@ class Log extends GSet {
         if (!entry.sig) throw new Error("Entry doesn't have a signature")
 
         if (this._keys.length === 1 && this._keys[0] === this._key ) {
-          if (entry.id !== this.id) 
+          if (entry.id !== this.id)
             throw new Error("Entry doesn't belong in this log (wrong ID)")
         }
 
-        if (this._keys.length > 0 
-            && !this._keys.includes('*') 
+        if (this._keys.length > 0
+            && !this._keys.includes('*')
             && !checkAllKeys(this._keys.concat([this._key]), entry)) {
           console.warn("Warning: Input log contains entries that are not allowed in this log. Logs weren't joined.")
           return false
@@ -427,7 +427,7 @@ class Log extends GSet {
    * @return {Promise<Log>}      New Log
    */
   static fromMultihash (ipfs, hash, length = -1, exclude, key, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
     // TODO: need to verify the entries with 'key'
@@ -444,7 +444,7 @@ class Log extends GSet {
    * @return {Promise<Log>}      New Log
    */
   static fromEntryHash (ipfs, hash, id, length = -1, exclude, key, keys, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     if (!isDefined(hash)) throw new Error("'hash' must be defined")
 
     // TODO: need to verify the entries with 'key'
@@ -461,7 +461,7 @@ class Log extends GSet {
    * @return {Promise<Log>}      New Log
    */
   static fromJSON (ipfs, json, length = -1, key, keys, timeout, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromJSON(ipfs, json, length, key, timeout, onProgressCallback)
@@ -478,7 +478,7 @@ class Log extends GSet {
    * @return {Promise<Log>}       New Log
    */
   static fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
     // TODO: need to verify the entries with 'key'

@@ -7,11 +7,9 @@ const defaultHashAlg = 'sha2-256'
 
 // 'use strict'
 
-// const ImmutableDB = require('./immutabledb-interface')
 
 const defaultFormat = { format: 'dag-cbor', hashAlg: 'sha2-256' }
 
-/* ImmutableDB using IPLD (through IPFS) */
 class IPLDStore {
   constructor (ipfs) {
     // super()
@@ -41,7 +39,6 @@ const createMultihash = (data, hashAlg) => {
 }
 
 // const LRU = require('lru')
-// const ImmutableDB = require('./immutabledb-interface')
 // const createMultihash = require('./create-multihash')
 
 /* Memory store using an LRU cache */

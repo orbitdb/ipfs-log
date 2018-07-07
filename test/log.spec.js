@@ -79,14 +79,14 @@ apis.forEach((IPFS) => {
         assert.deepEqual(log.tails, [])
       })
 
-      it('throws an error if ImmutableDB instance is not passed as an argument', () => {
+      it('throws an error if ipfs instance is not passed as an argument', () => {
         let err
         try {
           const log = new Log()
         } catch(e) {
           err = e
         }
-        assert.equal(err.message, 'ImmutableDB instance not defined')
+        assert.equal(err.message, 'Ipfs instance not defined')
       })
 
       it('sets an id', () => {
@@ -416,7 +416,7 @@ apis.forEach((IPFS) => {
             err = e
           }
           assert.notEqual(err, null)
-          assert.equal(err.message, 'ImmutableDB instance not defined')
+          assert.equal(err.message, 'Ipfs instance not defined')
         })
 
         it('throws an error if hash is not defined', () => {
@@ -1573,7 +1573,7 @@ apis.forEach((IPFS) => {
           err = e
         }
         assert.notEqual(err, null)
-        assert.equal(err.message, 'ImmutableDB instance not defined')
+        assert.equal(err.message, 'Ipfs instance not defined')
       })
     })
 

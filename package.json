@@ -13,6 +13,7 @@
     "node": ">=8.0.0"
   },
   "dependencies": {
+    "error-subclass": "^2.2.0",
     "p-map": "^1.1.1",
     "p-whilst": "^1.0.0"
   },

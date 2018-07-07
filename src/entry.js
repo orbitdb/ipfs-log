@@ -2,8 +2,7 @@
 
 const Clock = require('./lamport-clock')
 const isDefined = require('./utils/is-defined')
-
-const IpfsNotDefinedError = () => new Error('Ipfs instance not defined')
+const { IpfsNotDefinedError } = require('./custom-errors')
 
 class Entry {
   /**
@@ -18,7 +17,7 @@ class Entry {
    * @returns {Promise<Entry>}
    */
   static async create (ipfs, keystore, id, data, next = [], clock, signKey) {
-    if (!isDefined(ipfs)) throw IpfsNotDefinedError()
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     if (!isDefined(id)) throw new Error('Entry requires an id')
     if (!isDefined(data)) throw new Error('Entry requires data')
     if (!isDefined(next) || !Array.isArray(next)) throw new Error("'next' argument is not an array")
@@ -45,7 +44,7 @@ class Entry {
 
     // If signing key was passedd, sign the enrty
     if (keystore && signKey) {
-      entry = await Entry.signEntry(keystore, entry, signKey) 
+      entry = await Entry.signEntry(keystore, entry, signKey)
     }
 
     entry.hash = await Entry.toMultihash(ipfs, entry)
@@ -88,7 +87,7 @@ class Entry {
    * @returns {Promise<string>}
    */
   static async toMultihash (ipfs, entry) {
-    if (!ipfs) throw IpfsNotDefinedError()
+    if (!ipfs) throw new IpfsNotDefinedError()
     const isValidEntryObject = entry => entry.id && entry.clock && entry.next && entry.payload && entry.v >= 0
     if (!isValidEntryObject(entry)) {
       throw new Error('Invalid object format, cannot generate entry multihash')
@@ -123,7 +122,7 @@ class Entry {
    * @returns {Promise<Entry>}
    */
   static fromMultihash (ipfs, hash) {
-    if (!ipfs) throw IpfsNotDefinedError()
+    if (!ipfs) throw new IpfsNotDefinedError()
     if (!hash) throw new Error(`Invalid hash: ${hash}`)
     return ipfs.object.get(hash, { enc: 'base58' })
       .then((obj) => JSON.parse(obj.toJSON().data))

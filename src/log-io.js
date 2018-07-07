@@ -4,7 +4,7 @@ const pMap = require('p-map')
 const Entry = require('./entry')
 const EntryIO = require('./entry-io')
 const Clock = require('./lamport-clock')
-const LogError = require('./log-errors')
+const { IpfsNotDefinedError, LogNotDefinedError, NotALogError } = require('./custom-errors')
 const isDefined = require('./utils/is-defined')
 const _uniques = require('./utils/uniques')
 const intersection = require('./utils/intersection')
@@ -13,13 +13,13 @@ const difference = require('./utils/difference')
 const last = (arr, n) => arr.slice(arr.length - n, arr.length)
 
 class LogIO {
-  static toMultihash (immutabledb, log) {
-    if (!isDefined(immutabledb)) throw LogError.ImmutableDBNotDefinedError()
-    if (!isDefined(log)) throw LogError.LogNotDefinedError()
+  static toMultihash (ipfs, log) {
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
+    if (!isDefined(log)) throw new LogNotDefinedError()
 
     if (log.values.length < 1) throw new Error(`Can't serialize an empty log`)
     // return this._storage.put(this.toBuffer())
-    return immutabledb.object.put(log.toBuffer())
+    return ipfs.object.put(log.toBuffer())
       .then((dagNode) => dagNode.toJSON().multihash)
   }
 
@@ -31,16 +31,16 @@ class LogIO {
    * @param {function(hash, entry, parent, depth)} onProgressCallback
    * @returns {Promise<Log>}
    */
-  static fromMultihash (immutabledb, hash, length = -1, exclude, onProgressCallback) {
-    if (!isDefined(immutabledb)) throw LogError.ImmutableDBNotDefinedError()
+  static fromMultihash (ipfs, hash, length = -1, exclude, onProgressCallback) {
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
-    return immutabledb.object.get(hash, { enc: 'base58' })
+    return ipfs.object.get(hash, { enc: 'base58' })
       .then((dagNode) => JSON.parse(dagNode.toJSON().data))
-    // return immutabledb.get(hash)
+    // return ipfs.get(hash)
       .then((logData) => {
-        if (!logData.heads || !logData.id) throw LogError.NotALogError()
-        return EntryIO.fetchAll(immutabledb, logData.heads, length, exclude, null, onProgressCallback)
+        if (!logData.heads || !logData.id) throw new NotALogError()
+        return EntryIO.fetchAll(ipfs, logData.heads, length, exclude, null, onProgressCallback)
           .then((entries) => {
             // Find latest clock
             const clock = entries.reduce((clock, entry) => {
@@ -62,7 +62,7 @@ class LogIO {
   }
 
   static fromEntryHash (ipfs, entryHash, id, length = -1, exclude, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.IpfsNotDefinedError()
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     if (!isDefined(entryHash)) throw new Error("'entryHash' must be defined")
 
     // Fetch given length, return size at least the given input entries
@@ -83,7 +83,7 @@ class LogIO {
   }
 
   static fromJSON (ipfs, json, length = -1, key, timeout, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     return EntryIO.fetchParallel(ipfs, json.heads.map(e => e.hash), length, [], 16, timeout, onProgressCallback)
       .then((entries) => {
         const finalEntries = entries.slice().sort(Entry.compare)
@@ -105,8 +105,8 @@ class LogIO {
    * @param {function(hash, entry, parent, depth)} [onProgressCallback]
    * @returns {Promise<Log>}
    */
-  static fromEntry (immutabledb, sourceEntries, length = -1, exclude, key, keys, onProgressCallback) {
-    if (!isDefined(immutabledb)) throw LogError.ImmutableDBNotDefinedError()
+  static fromEntry (ipfs, sourceEntries, length = -1, exclude, key, keys, onProgressCallback) {
+    if (!isDefined(ipfs)) throw new IpfsNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
     // Make sure we only have Entry objects as input
@@ -125,7 +125,7 @@ class LogIO {
     const excludeHashes = exclude ? exclude.map(e => e.hash ? e.hash : e) : exclude
     const hashes = sourceEntries.map(e => e.hash)
 
-    return EntryIO.fetchParallel(immutabledb, hashes, length, excludeHashes, null, null, onProgressCallback)
+    return EntryIO.fetchParallel(ipfs, hashes, length, excludeHashes, null, null, onProgressCallback)
       .then((entries) => {
         var combined = sourceEntries.concat(entries)
         var uniques = _uniques(combined, 'hash').sort(Entry.compare)
