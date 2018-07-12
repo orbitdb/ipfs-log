@@ -1,7 +1,6 @@
 'use strict'
 
 const Log = require('../src/log')
-const ACL = require('../src/acl')
 const Keystore = require('orbit-db-keystore')
 const IPFS = require('ipfs')
 const IPFSRepo = require('ipfs-repo')
@@ -67,8 +66,8 @@ let run = (() => {
     const keystore = Keystore.create('./test-keys')
     const key = keystore.createKey('benchmark-append-signed')
 
-    log1 = new Log(ipfs, 'A', null, null, null, new ACL(keystore, key, key.getPublic('hex')))
-    log2 = new Log(ipfs, 'B', null, null, null, new ACL(keystore, key, key.getPublic('hex')))
+    log1 = new Log(ipfs, 'A', null, null, null, keystore.sign, keystore.verify, key.getPublic('hex'))
+    log2 = new Log(ipfs, 'B', null, null, null, keystore.sign, keystore.verify, key.getPublic('hex'))
 
     // Output metrics at 1 second interval
     setInterval(() => {

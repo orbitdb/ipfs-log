@@ -2,7 +2,6 @@
 
 const IPFS = require('ipfs')
 const Log = require('../src/log')
-const ACL = require('../src/acl')
 const Keystore = require('orbit-db-keystore')
 
 const dataPath = './ipfs/examples/log'
@@ -28,12 +27,9 @@ ipfs.on('ready', async () => {
   }
 
   // Create access controllers: allow write for key1 and key2
-  let acl1 = new ACL(keystore, key1, [key1.getPublic('hex'), key2.getPublic('hex')])
-  let acl2 = new ACL(keystore, key2, [key1.getPublic('hex'), key2.getPublic('hex')])
-
-  let log1 = new Log(ipfs, 'A', null, null, null, acl1)
-  let log2 = new Log(ipfs, 'A', null, null, null, acl1)
-  let log3 = new Log(ipfs, 'A', null, null, null, acl2)
+  let log1 = new Log(ipfs, 'A', null, null, null, keystore.sign, keystore.verify, key1)
+  let log2 = new Log(ipfs, 'A', null, null, null, keystore.sign, keystore.verify, key1)
+  let log3 = new Log(ipfs, 'A', null, null, null, keystore.sign, keystore.verify, key2)
 
   try {
     await log1.append('one')
