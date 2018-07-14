@@ -20,16 +20,17 @@ let immediate
 
 let waveCount = 0
 let waveLength = 10 // seconds
+let waveDepth = parseInt(process.argv[2], 10) || 10000
 
 let addEntries = async () => {
-  for (let i=0; i<10000; i++) {
+  for (let i=0; i<waveDepth; i++) {
     await log.append(`Hello World: ${i}`)
   }
 
   // choose random entry
   entry = log.values[Math.floor(Math.random() * log.values.length)]
 
-  console.log(`=== Running wave #${waveCount} for ${waveLength} seconds  with ${log.values.length} entries ===`)
+  console.log(`=== Running wave #${waveCount} for ${waveLength} seconds with ${log.values.length} entries ===`)
 }
 
 const queryLoop = async () => {
