@@ -6,6 +6,7 @@ const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
 const Keystore = require('orbit-db-keystore')
 const Log = require('../src/log')
+const getTestEntryValidator = require('./utils/test-entry-validator')
 
 const apis = [require('ipfs')]
 const dataDir = './ipfs/tests/log'
@@ -23,16 +24,6 @@ const ipfsConf = {
     dht: false,
     sharding: false,
   },
-}
-
-const DEFAULT_SIGNATURE = '434433337deadbeef'
-const signEntry = function (entry) {
-  return DEFAULT_SIGNATURE
-}
-
-const verifySignature = function (key, signature, data) {
-  if (signature !== DEFAULT_SIGNATURE) throw new Error(`Invalid signature '${signature}'`)
-  return true
 }
 
 let ipfs, key1, key2, key3
@@ -64,13 +55,13 @@ apis.forEach((IPFS) => {
 
     // TODO: really an EntryValidator test
     it('creates a signed log', () => {
-      const log = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key1.getPublic('hex'))
+      const log = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key1.getPublic('hex')))
       assert.notEqual(log.id, null)
       assert.equal(log._entryValidator.publicKey, key1.getPublic('hex'))
     })
 
     it('entries contain a signature and a public signing key', async () => {
-      const log = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key1.getPublic('hex'))
+      const log = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key1.getPublic('hex')))
       await log.append('one')
       assert.notEqual(log.values[0].sig, null)
       assert.equal(log.values[0].key, key1.getPublic('hex'))
@@ -84,8 +75,8 @@ apis.forEach((IPFS) => {
     })
 
     it('doesn\'t join logs with different IDs ', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key1.getPublic('hex'))
-      const log2 = new Log(ipfs, 'B', null, null, null, signEntry, verifySignature, key2.getPublic('hex'))
+      const log1 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key1.getPublic('hex')))
+      const log2 = new Log(ipfs, 'B', null, null, null, getTestEntryValidator(key2.getPublic('hex')))
 
       let err
       try {
@@ -104,8 +95,8 @@ apis.forEach((IPFS) => {
     })
 
     it('throws an error if log is signed but trying to merge with an entry that doesn\'t have public signing key', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key1.getPublic('hex'))
-      const log2 = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key2.getPublic('hex'))
+      const log1 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key1.getPublic('hex')))
+      const log2 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key2.getPublic('hex')))
 
       let err
       try {
@@ -120,8 +111,8 @@ apis.forEach((IPFS) => {
     })
 
     it('throws an error if log is signed but trying to merge an entry that doesn\'t have a signature', async () => {
-      const log1 = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key1.getPublic('hex'))
-      const log2 = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key2.getPublic('hex'))
+      const log1 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key1.getPublic('hex')))
+      const log2 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key2.getPublic('hex')))
 
       let err
       try {
@@ -140,8 +131,8 @@ apis.forEach((IPFS) => {
         return str.substr(0, index) + replacement+ str.substr(index + replacement.length)
       }
 
-      const log1 = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key1.getPublic('hex'))
-      const log2 = new Log(ipfs, 'A', null, null, null, signEntry, verifySignature, key2.getPublic('hex'))
+      const log1 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key1.getPublic('hex')))
+      const log2 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key2.getPublic('hex')))
       let err
 
       try {
@@ -152,21 +143,21 @@ apis.forEach((IPFS) => {
       } catch (e) {
         err = e.toString()
       }
-      assert.equal(err, `Error: Could not validate signature: ${log2.values[0].sig}`)
+      assert.equal(err, 'Error: Could not validate signature or key not allowed')
       assert.equal(log1.values.length, 1)
       assert.equal(log1.values[0].payload, 'one')
     })
 
     it('throws an error if entry doesn\'t have append access', async () => {
-      // This should be done at the orbit-db level, this is part of ACL
+      // This should be done at the orbit-db level, this is part of orbit ACL
       // It simulates a scenario where "key2" is not allowed to append to the log
       const checkInvalidKey = entry => {
         if (entry.key !== key1.getPublic('hex')) throw new Error('Not allowed to write')
-        return DEFAULT_SIGNATURE
+        return getTestEntryValidator.DEFAULT_SIGNATURE
       }
 
-      const log1 = new Log(ipfs, 'A', null, null, null, checkInvalidKey, verifySignature, key1.getPublic('hex'))
-      const log2 = new Log(ipfs, 'A', null, null, null, checkInvalidKey, verifySignature, key2.getPublic('hex'))
+      const log1 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key1.getPublic('hex'), checkInvalidKey))
+      const log2 = new Log(ipfs, 'A', null, null, null, getTestEntryValidator(key2.getPublic('hex'), checkInvalidKey))
 
       let err
       try {
@@ -176,7 +167,7 @@ apis.forEach((IPFS) => {
       } catch (e) {
         err = e.toString()
       }
-      assert.equal(err, 'Error: Could not sign entry')
+      assert.equal(err, 'Error: Could not sign entry or key not allowed')
     })
   })
 })

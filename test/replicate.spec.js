@@ -7,6 +7,7 @@ const DatastoreLevel = require('datastore-level')
 const config = require('./config/ipfs-daemon.config')
 const Log = require('../src/log.js')
 const MemStore = require('./utils/mem-store')
+const getTestEntryValidator = require('./utils/test-entry-validator')
 
 const apis = [require('ipfs')]
 
@@ -17,9 +18,6 @@ const repoConf = {
 }
 
 const channel = 'XXX'
-
-const sign = () => '-'
-const verification = () => true
 
 // Shared database name
 const waitForPeers = (ipfs, channel) => {
@@ -125,10 +123,10 @@ apis.forEach((IPFS) => {
       }
 
       beforeEach((done) => {
-        log1 = new Log(ipfs1, 'A', null, null, null, sign, verification, 'peerA')
-        log2 = new Log(ipfs2, 'A', null, null, null, sign, verification, 'peerB')
-        input1 = new Log(ipfs1, 'A', null, null, null, sign, verification, 'peerA')
-        input2 = new Log(ipfs2, 'A', null, null, null, sign, verification, 'peerB')
+        log1 = new Log(ipfs1, 'A', null, null, null, getTestEntryValidator('peerA'))
+        log2 = new Log(ipfs2, 'A', null, null, null, getTestEntryValidator('peerB'))
+        input1 = new Log(ipfs1, 'A', null, null, null, getTestEntryValidator('peerA'))
+        input2 = new Log(ipfs2, 'A', null, null, null, getTestEntryValidator('peerB'))
         ipfs1.pubsub.subscribe(channel, handleMessage, (err) => {
           if (err)
             return done(err)
@@ -174,7 +172,7 @@ apis.forEach((IPFS) => {
               const timeout = 30000
               await whileProcessingMessages(timeout)
 
-              let result = new Log(ipfs1, 'A', null, null, null, sign, verification, 'peerA')
+              let result = new Log(ipfs1, 'A', null, null, null, getTestEntryValidator('peerA'))
               await result.join(log1)
               await result.join(log2)
 

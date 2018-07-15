@@ -6,6 +6,7 @@ const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
 const Log = require('../src/log')
 const EntryIO = require('../src/entry-io')
+const getTestEntryValidator = require('./utils/test-entry-validator')
 
 const apis = [require('ipfs')]
 
@@ -146,9 +147,9 @@ apis.forEach((IPFS) => {
       const count = 30
       const sign = () => '-'
       const verification = () => true
-      let log =  new Log(ipfs, 'X', null, null, null, sign, verification, 'A')
-      let log2 = new Log(ipfs, 'X', null, null, null, sign, verification, 'B')
-      let log3 = new Log(ipfs, 'X', null, null, null, sign, verification, 'C')
+      let log =  new Log(ipfs, 'X', null, null, null, getTestEntryValidator('A'))
+      let log2 = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('B'))
+      let log3 = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('C'))
       for (let i = 1; i <= count; i ++) {
         await log.append('hello' + i)
         if (i % 10 === 0) {
@@ -156,14 +157,14 @@ apis.forEach((IPFS) => {
           await log2.join(log)
         }
         if (i % 25 === 0) {
-          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads), null, sign, verification, 'C')
+          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads), null, getTestEntryValidator('C'))
           await log3.append('--' + i)
         }
       }
 
       await log3.join(log2)
 
-      const log4 = new Log(ipfs, 'X', null, null, null, sign, verification, 'D')
+      const log4 = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('D'))
       await log4.join(log2)
       await log4.join(log3)
 

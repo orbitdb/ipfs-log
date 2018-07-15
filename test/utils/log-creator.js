@@ -3,16 +3,15 @@
 const Entry = require('../../src/entry')
 const Log = require('../../src/log.js')
 
-const sign = () => '-'
-const verification = () => true
+const getTestEntryValidator = require('./test-entry-validator')
 
 class LogCreator {
   static async createLog1 (ipfs) {
     const create = async () => {
-      let logA = new Log(ipfs, 'X', null, null, null, sign, verification, 'A')
-      let logB = new Log(ipfs, 'X', null, null, null, sign, verification, 'B')
-      let log3 = new Log(ipfs, 'X', null, null, null, sign, verification, '3')
-      let log  = new Log(ipfs, 'X', null, null, null, sign, verification, 'log')
+      let logA = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('A'))
+      let logB = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('B'))
+      let log3 = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('3'))
+      let log  = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('log'))
 
       for(let i = 1; i <= 5; i ++) {
         await logA.append('entryA' + i)
@@ -49,9 +48,9 @@ class LogCreator {
     let expectedData = []
 
     const create = async () => {
-      let logA = new Log(ipfs, 'X', null, null, null, sign, verification, 'A')
-      let logB = new Log(ipfs, 'X', null, null, null, sign, verification, 'B')
-      let log  = new Log(ipfs, 'X', null, null, null, sign, verification, 'log')
+      let logA = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('A'))
+      let logB = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('B'))
+      let log  = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('log'))
       for(let i = 1; i <= amount; i ++) {
         await logA.append('entryA' + i)
         await logB.join(logA)
