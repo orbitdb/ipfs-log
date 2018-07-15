@@ -3,12 +3,12 @@ const isFunction = require('./utils/is-function')
 const encode = data => Buffer.from(JSON.stringify(data))
 
 class EntryValidator {
-  constructor (sign, verifySignature, publicKey) {
-    if (!isFunction(sign)) {
+  constructor ({ checkPermissionsAndSign, checkPermissionsAndVerifySignature, publicKey } = {}) {
+    if (!isFunction(checkPermissionsAndSign)) {
       throw new Error('Signing function is invalid')
     }
 
-    if (!isFunction(verifySignature)) {
+    if (!isFunction(checkPermissionsAndVerifySignature)) {
       throw new Error('Signature verification function is invalid')
     }
 
@@ -16,9 +16,13 @@ class EntryValidator {
       throw new Error('Invalid public key')
     }
 
-    this._sign = sign
-    this._verifySignature = verifySignature
+    this._checkPermissionsAndSign = checkPermissionsAndSign
+    this._checkPermissionsAndVerifySignature = checkPermissionsAndVerifySignature
     this._publicKey = publicKey
+  }
+
+  set publicKey (key) {
+    this._publicKey = key
   }
 
   get publicKey () {
@@ -27,17 +31,19 @@ class EntryValidator {
 
   async signEntry (entry) {
     try {
-      return this._sign(entry, encode(entry))
+      return this._checkPermissionsAndSign(entry, encode(entry))
     } catch(error) {
-      throw new Error('Could not sign entry')
+      console.error(error)
+      throw new Error('Could not sign entry or key not allowed')
     }
   }
 
   async verifyEntrySignature (key, signature, entry) {
     try {
-      return this._verifySignature(entry, signature, key, encode(entry))
+      return this._checkPermissionsAndVerifySignature(entry, signature, key, encode(entry))
     } catch (error) {
-      throw new Error(`Could not validate signature: ${signature}`)
+      console.error(error)
+      throw new Error('Could not validate signature or key not allowed')
     }
   }
 }
