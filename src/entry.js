@@ -44,17 +44,13 @@ class Entry {
     }
 
     // If entryValidator was passed, sign the entry (=authorize)
-    entry = await Entry.sign(entry, entryValidator)
-    entry.hash = await Entry.toMultihash(ipfs, entry)
-    return entry
-  }
+    if (entryValidator) {
+      const signature = await entryValidator.signEntry(entry)
+      entry.key = entryValidator.publicKey
+      entry.sig = signature
+    }
 
-  // TODO: This could instead just return the signature from the entry validator instead of
-  // modifying the entry (modifying parameters isnt a good practice)
-  static async sign (entry, entryValidator) {
-    const signature = await entryValidator.signEntry(entry)
-    entry.sig = signature
-    entry.key = entryValidator.publicKey
+    entry.hash = await Entry.toMultihash(ipfs, entry)
 
     return entry
   }
