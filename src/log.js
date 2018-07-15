@@ -43,9 +43,12 @@ class Log extends GSet {
    * to the log itself and the verification function should return true
    * if the entry is valid and false if it is not. Logs containing entries
    * marked as invalid by this function will not be joined
+   * @param {Object}          [validator]     Validator following an interface
+   * that provides functions for signing and verifying entries and a publicKey
+   * to be used as a fallback to the clockId
    * @return {Log}                            Log
    */
-  constructor (ipfs, id, entries, heads, clock, sign, verify, publicKey) {
+  constructor (ipfs, id, entries, heads, clock, validator) {
     // TODO: We have to simplify this constructor and get an "options" object or something like this
     if (!isDefined(ipfs)) {
       throw LogError.ImmutableDBNotDefinedError()
@@ -59,25 +62,20 @@ class Log extends GSet {
       throw new Error(`'heads' argument must be an array`)
     }
 
-    if (!(isDefined(sign) && isFunction(sign))) {
-      throw new Error('Signing function not defined or invalid')
-    }
-
-    if (!(isDefined(verify) && isFunction(verify))) {
-      throw new Error('Verification function not defined or invalid')
-    }
-
-    if (!isDefined(publicKey)) {
-      throw new Error('Public key not defined or invalid')
-    }
+    // @FIXME Make the validator param required!
+    // if (!isDefined(validator)) {
+    //   throw new Error('Signing and verification function not defined or invalid')
+    // }
 
     super()
 
     this._storage = ipfs
     this._id = id || randomId()
 
-    // Integrity checker
-    this._entryValidator = new EntryValidator(sign, verify, publicKey)
+    // Entry validator
+    if (validator) {
+      this._entryValidator = new EntryValidator(validator)
+    }
 
     // Add entries to the internal cache
     entries = entries || []
@@ -377,7 +375,7 @@ class Log extends GSet {
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromMultihash(ipfs, hash, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, entryValidator.sign, entryValidator.verify, entryValidator.publicKey))
+      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, entryValidator))
   }
 
   /**
@@ -394,7 +392,7 @@ class Log extends GSet {
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntryHash(ipfs, hash, id, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, id, data.values, null, null, entryValidator.sign, entryValidator.verify, entryValidator.publicKey))
+      .then((data) => new Log(ipfs, id, data.values, null, null, entryValidator))
   }
 
   /**
@@ -410,7 +408,7 @@ class Log extends GSet {
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromJSON(ipfs, json, length, timeout, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, entryValidator.sign, entryValidator.verify, entryValidator.publicKey))
+      .then((data) => new Log(ipfs, data.id, data.values, null, null, entryValidator))
   }
 
   /**
@@ -422,7 +420,7 @@ class Log extends GSet {
    * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
    * @return {Promise<Log>}       New Log
    */
-  static fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback) {
+  static fromEntry (ipfs, sourceEntries, length = -1, exclude, entryValidator, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
@@ -430,7 +428,7 @@ class Log extends GSet {
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, null, null, null)) // entryValidator.sign, entryValidator.verify, entryValidator.publicKey))
+      .then((data) => new Log(ipfs, data.id, data.values, null, null, entryValidator))
   }
 
   /**
