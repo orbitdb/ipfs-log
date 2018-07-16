@@ -62,10 +62,9 @@ class Log extends GSet {
       throw new Error(`'heads' argument must be an array`)
     }
 
-    // @FIXME Make the validator param required!
-    // if (!isDefined(validator)) {
-    //   throw new Error('Signing and verification function not defined or invalid')
-    // }
+    if (!isDefined(validator)) {
+      throw new Error('Validator is required')
+    }
 
     super()
 
@@ -73,9 +72,7 @@ class Log extends GSet {
     this._id = id || randomId()
 
     // Entry validator
-    if (validator) {
-      this._entryValidator = new EntryValidator(validator)
-    }
+    this._entryValidator = new EntryValidator(validator)
 
     // Add entries to the internal cache
     entries = entries || []
@@ -251,12 +248,9 @@ class Log extends GSet {
     // Get the difference of the logs
     const newItems = Log.difference(log, this)
 
-    // If we have an entry validator, verify that all new entries can be joined
-    // with this log, throws an error if fails
-    if (this._entryValidator) {
-      const verify = async (entry) => await Entry.verify(entry, this._entryValidator)
-      await pMap(Object.values(newItems), verify, { concurrency: 1 })
-    }
+    // Verify that all new entries can be joined with this log, throws an error if fails
+    const verify = async (entry) => await Entry.verify(entry, this._entryValidator)
+    await pMap(Object.values(newItems), verify, { concurrency: 1 })
 
     // Update the internal entry index
     this._entryIndex = Object.assign(this._entryIndex, newItems)
@@ -423,8 +417,6 @@ class Log extends GSet {
   static fromEntry (ipfs, sourceEntries, length = -1, exclude, entryValidator, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
-
-    // @FIXME: this needs to receive a validator now
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)

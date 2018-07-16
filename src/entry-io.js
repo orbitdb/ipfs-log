@@ -38,7 +38,7 @@ class EntryIO {
 
     // Add entries that we don't need to fetch to the "cache"
     var addToExcludeCache = e => cache[e.hash] = e
-    exclude.forEach(addToExcludeCache)
+    exclude && exclude.length && exclude.forEach(addToExcludeCache)
 
     const shouldFetchMore = () => {
       return loadingQueue.length > 0

@@ -19,6 +19,7 @@ class Entry {
    */
   static async create (ipfs, entryValidator, id, data, next = [], clock) {
     if (!isDefined(ipfs)) throw IpfsNotDefinedError()
+    if (!isDefined(entryValidator)) throw new Error("Entry validator is null or undefined")
     if (!isDefined(id)) throw new Error('Entry requires an id')
     if (!isDefined(data)) throw new Error('Entry requires data')
     if (!isDefined(next) || !Array.isArray(next)) throw new Error("'next' argument is not an array")
@@ -43,13 +44,9 @@ class Entry {
       clock: new Clock(clockId, clockTime),
     }
 
-    // If entryValidator was passed, sign the entry (=authorize)
-    if (entryValidator) {
-      const signature = await entryValidator.signEntry(entry)
-      entry.key = entryValidator.publicKey
-      entry.sig = signature
-    }
-
+    const signature = await entryValidator.signEntry(entry)
+    entry.key = entryValidator.publicKey
+    entry.sig = signature
     entry.hash = await Entry.toMultihash(ipfs, entry)
 
     return entry
@@ -58,6 +55,7 @@ class Entry {
   static async verify (entry, entryValidator) {
     if (!entry.key) throw new Error("Entry doesn't have a public key")
     if (!entry.sig) throw new Error("Entry doesn't have a signature")
+    if (!entryValidator) throw new Error("Entry validator is null or undefined, cannot verify entry")
     if (!Entry.isEntry(entry)) throw new Error("Not a valid Log entry")
 
     const e = Object.assign({}, {
