@@ -26,10 +26,19 @@ ipfs.on('ready', async () => {
     console.error(e)
   }
 
+  const getEntryValidator = key => ({
+    publicKey: key.getPublic('hex'),
+    checkPermissionsAndSign: (entry, data) => keystore.sign(key, data),
+    checkPermissionsAndVerifySignature: async (entry, data) =>  {
+      const pubKey = await keystore.importPublicKey(entry.key)
+      return keystore.verify(entry.sig, pubKey, data)
+    }
+  })
+
   // Create access controllers: allow write for key1 and key2
-  let log1 = new Log(ipfs, 'A', null, null, null, keystore.sign, keystore.verify, key1)
-  let log2 = new Log(ipfs, 'A', null, null, null, keystore.sign, keystore.verify, key1)
-  let log3 = new Log(ipfs, 'A', null, null, null, keystore.sign, keystore.verify, key2)
+  let log1 = new Log(ipfs, 'A', null, null, null, getEntryValidator(key1))
+  let log2 = new Log(ipfs, 'A', null, null, null, getEntryValidator(key1))
+  let log3 = new Log(ipfs, 'A', null, null, null, getEntryValidator(key2))
 
   try {
     await log1.append('one')

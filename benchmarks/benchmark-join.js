@@ -1,6 +1,7 @@
 'use strict'
 
 const Log = require('../src/log')
+const Keystore = require('orbit-db-keystore')
 const IPFS = require('ipfs')
 const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
@@ -18,12 +19,13 @@ let lastTenSeconds = 0
 
 const queryLoop = async () => {
   try {
-    const add1 = await log1.append('a' + totalQueries)
-    const add2 = await log2.append('b' + totalQueries)
+    await Promise.all([
+      log1.append('a' + totalQueries),
+      log2.append('b' + totalQueries)
+    ])
 
-    await Promise.all([add1, add2])
-    log1.join(log2)
-    log2.join(log1)
+    await log1.join(log2)
+    await log2.join(log1)
     totalQueries++
     lastTenSeconds++
     queriesPerSecond++
@@ -62,8 +64,19 @@ let run = (() => {
     // ipfs.object.put = memstore.put.bind(memstore)
     // ipfs.object.get = memstore.get.bind(memstore)
 
-    log1 = new Log(ipfs, 'A')
-    log2 = new Log(ipfs, 'B')
+    const keystore = Keystore.create('./test-keys')
+    const key = keystore.createKey('benchmark-append-signed')
+    const entryValidator = {
+      publicKey: key.getPublic('hex'),
+      checkPermissionsAndSign: (entry, data) => keystore.sign(key, data),
+      checkPermissionsAndVerifySignature: async (entry, data) =>  {
+        const pubKey = await keystore.importPublicKey(entry.key)
+        return keystore.verify(entry.sig, pubKey, data)
+      }
+    }
+
+    log1 = new Log(ipfs, 'A', null, null, null, entryValidator)
+    log2 = new Log(ipfs, 'B', null, null, null, entryValidator)
 
     // Output metrics at 1 second interval
     setInterval(() => {

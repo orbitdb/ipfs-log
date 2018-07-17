@@ -1,6 +1,7 @@
 'use strict'
 
 const Log = require('../src/log')
+const Keystore = require('orbit-db-keystore')
 const IPFS = require('ipfs')
 const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
@@ -53,8 +54,18 @@ let run = (() => {
     // ipfs.object.put = memstore.put.bind(memstore)
     // ipfs.object.get = memstore.get.bind(memstore)
 
-    // Create a log
-    log = new Log(ipfs, 'A')
+    const keystore = Keystore.create('./test-keys')
+    const key = keystore.createKey('benchmark-append-signed')
+    const entryValidator = {
+      publicKey: key.getPublic('hex'),
+      checkPermissionsAndSign: (entry, data) => keystore.sign(key, data),
+      checkPermissionsAndVerifySignature: async (entry, data) =>  {
+        const pubKey = await keystore.importPublicKey(entry.key)
+        return keystore.verify(entry.sig, pubKey, data)
+      }
+    }
+
+    log = new Log(ipfs, 'A', null, null, null, entryValidator)
 
     // Output metrics at 1 second interval
     setInterval(() => {
