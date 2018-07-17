@@ -58,17 +58,13 @@ class Entry {
     if (!entryValidator) throw new Error("Entry validator is null or undefined, cannot verify entry")
     if (!Entry.isEntry(entry)) throw new Error("Not a valid Log entry")
 
-    const e = Object.assign({}, {
-      hash: null,
-      id: entry.id,
-      payload: entry.payload,
-      next: entry.next,
-      v: entry.v,
-      clock: entry.clock,
-    })
-
     // Throws an error if verification fails
-    return entryValidator.verifyEntrySignature(entry.key, entry.sig, entry)
+    const isValid = await entryValidator.verifyEntrySignature(entry)
+    if (!isValid) {
+      throw new Error(`Invalid signature on entry: ${entry.hash}`)
+    }
+
+    return true
   }
 
   /**

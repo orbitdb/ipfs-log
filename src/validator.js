@@ -38,9 +38,9 @@ class EntryValidator {
     }
   }
 
-  async verifyEntrySignature (key, signature, entry) {
+  async verifyEntrySignature (entry) {
     try {
-      return this._checkPermissionsAndVerifySignature(entry, signature, key, encode(entry))
+      return this._checkPermissionsAndVerifySignature(entry, encode(entry))
     } catch (error) {
       console.error(error)
       throw new Error('Could not validate signature or key not allowed')
