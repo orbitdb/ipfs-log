@@ -68,10 +68,13 @@ apis.forEach((IPFS) => {
     })
 
     it('doesn\'t sign entries when key is not defined', async () => {
-      const log = new Log(ipfs, 'A')
-      await log.append('one')
-      assert.equal(log.values[0].sig, null)
-      assert.equal(log.values[0].key, null)
+      let err
+      try {
+        const log = new Log(ipfs)
+      } catch (e) {
+        err = e.toString()
+      }
+      assert.equal(err, 'Error: Validator is required')
     })
 
     it('doesn\'t join logs with different IDs ', async () => {

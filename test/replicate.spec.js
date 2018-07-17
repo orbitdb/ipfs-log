@@ -104,7 +104,7 @@ apis.forEach((IPFS) => {
         const exclude = log1.values.map((e) => e.hash)
         process.stdout.write('\r')
         process.stdout.write(`> Buffer1: ${buffer1.length} - Buffer2: ${buffer2.length}`)
-        const log = await Log.fromMultihash(ipfs1, message.data.toString())
+        const log = await Log.fromMultihash(ipfs1, message.data.toString(), -1, null, getTestEntryValidator('peerA'))
         await log1.join(log)
         processing --
       }
@@ -117,7 +117,7 @@ apis.forEach((IPFS) => {
         process.stdout.write('\r')
         process.stdout.write(`> Buffer1: ${buffer1.length} - Buffer2: ${buffer2.length}`)
         const exclude = log2.values.map((e) => e.hash)
-        const log = await Log.fromMultihash(ipfs2, message.data.toString())
+        const log = await Log.fromMultihash(ipfs2, message.data.toString(), -1, null, getTestEntryValidator('peerB'))
         await log2.join(log)
         processing --
       }

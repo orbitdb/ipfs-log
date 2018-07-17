@@ -11,13 +11,13 @@ const getTestEntryValidator = require('./utils/test-entry-validator')
 const apis = [require('ipfs')]
 
 const dataDir = './ipfs/tests/fetch'
-
 const repoConf = {
   storageBackends: {
     blocks: DatastoreLevel,
   },
 }
 
+const testEntryValidator = getTestEntryValidator()
 let ipfs, ipfsDaemon
 
 const last = arr => arr[arr.length - 1]
@@ -47,7 +47,7 @@ apis.forEach((IPFS) => {
     })
 
     it('log with one entry', async () => {
-      let log = new Log(ipfs, 'X')
+      let log = new Log(ipfs, 'X', null, null, null, testEntryValidator)
       await log.append('one')
       const hash = log.values[0].hash
       const res = await EntryIO.fetchAll(ipfs, hash, 1)
@@ -55,7 +55,7 @@ apis.forEach((IPFS) => {
     })
 
     it('log with 2 entries', async () => {
-      let log = new Log(ipfs, 'X')
+      let log = new Log(ipfs, 'X', null, null, null, testEntryValidator)
       await log.append('one')
       await log.append('two')
       const hash = last(log.values).hash
@@ -64,7 +64,7 @@ apis.forEach((IPFS) => {
     })
 
     it('loads max 1 entriy from a log of 2 entry', async () => {
-      let log = new Log(ipfs, 'X')
+      let log = new Log(ipfs, 'X', null, null, null, testEntryValidator)
       await log.append('one')
       await log.append('two')
       const hash = last(log.values).hash
@@ -74,72 +74,72 @@ apis.forEach((IPFS) => {
 
     it('log with 100 entries', async () => {
       const count = 100
-      let log = new Log(ipfs, 'X')
+      let log = new Log(ipfs, 'X', null, null, null, testEntryValidator)
       for (let i = 0; i < count; i ++)
         await log.append('hello' + i)
 
       const hash = await log.toMultihash()
-      const result = await Log.fromMultihash(ipfs, hash)
+      const result = await Log.fromMultihash(ipfs, hash, -1, null, testEntryValidator)
       assert.equal(result.length, count)
     })
 
     it('load only 42 entries from a log with 100 entries', async () => {
       const count = 100
-      let log = new Log(ipfs, 'X')
-      let log2 = new Log(ipfs, 'X')
+      let log = new Log(ipfs, 'X', null, null, null, testEntryValidator)
+      let log2 = new Log(ipfs, 'X', null, null, null, testEntryValidator)
       for (let i = 1; i <= count; i ++) {
         await log.append('hello' + i)
         if (i % 10 === 0) {
-          log2 = new Log(ipfs, log2.id, log2.values, log2.heads.concat(log.heads))
+          log2 = new Log(ipfs, log2.id, log2.values, log2.heads.concat(log.heads), null, testEntryValidator)
           await log2.append('hi' + i)
         }
       }
 
       const hash = await log.toMultihash()
-      const result = await Log.fromMultihash(ipfs, hash, 42)
+      const result = await Log.fromMultihash(ipfs, hash, 42, null, testEntryValidator)
       assert.equal(result.length, 42)
     })
 
     it('load only 99 entries from a log with 100 entries', async () => {
       const count = 100
-      let log = new Log(ipfs, 'X')
-      let log2 = new Log(ipfs, 'X')
-      let log3 = new Log(ipfs, 'X')
+      let log = new Log(ipfs, 'X', null, null, null, testEntryValidator)
+      let log2 = new Log(ipfs, 'X', null, null, null, testEntryValidator)
+      let log3 = new Log(ipfs, 'X', null, null, null, testEntryValidator)
       for (let i = 1; i <= count; i ++) {
         await log.append('hello' + i)
         if (i % 10 === 0) {
-          log2 = new Log(ipfs, log2.id, log2.values)
+          log2 = new Log(ipfs, log2.id, log2.values, null, null, testEntryValidator)
           await log2.append('hi' + i)
           log2.join(log)
         }
       }
 
       const hash = await log2.toMultihash()
-      const result = await Log.fromMultihash(ipfs, hash, 99)
+      const result = await Log.fromMultihash(ipfs, hash, 99, null, testEntryValidator)
       assert.equal(result.length, 99)
     })
 
     it('load only 10 entries from a log with 100 entries', async () => {
       const count = 100
-      let log = new Log(ipfs, 'X')
-      let log2 = new Log(ipfs, 'X')
-      let log3 = new Log(ipfs, 'X')
+      let log = new Log(ipfs, 'X', null, null, null, testEntryValidator)
+      let log2 = new Log(ipfs, 'X', null, null, null, testEntryValidator)
+      let log3 = new Log(ipfs, 'X', null, null, null, testEntryValidator)
       for (let i = 1; i <= count; i ++) {
         await log.append('hello' + i)
         if (i % 10 === 0) {
-          log2 = new Log(ipfs, log2.id, log2.values, log2.heads)
+          log2 = new Log(ipfs, log2.id, log2.values, log2.heads, null, testEntryValidator)
           await log2.append('hi' + i)
           await log2.join(log)
         }
         if (i % 25 === 0) {
-          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads))
+          log3 = new Log(ipfs, log3.id, log3.values, log3.heads.concat(log2.heads), null, testEntryValidator)
           await log3.append('--' + i)
         }
       }
 
       await log3.join(log2)
       const hash = await log3.toMultihash()
-      const result = await Log.fromMultihash(ipfs, hash, 10)
+      const result = await Log.fromMultihash(ipfs, hash, 10, null, testEntryValidator)
       assert.equal(result.length, 10)
     })
 
