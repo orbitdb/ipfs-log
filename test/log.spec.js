@@ -34,7 +34,7 @@ apis.forEach((IPFS) => {
 
     before((done) => {
       rmrf.sync(dataDir)
-      ipfs = new IPFS({ 
+      ipfs = new IPFS({
         repo: new IPFSRepo(dataDir, repoConf),
         EXPERIMENTAL: {
           pubsub: true,
@@ -53,7 +53,7 @@ apis.forEach((IPFS) => {
     })
 
     after(async () => {
-      if (ipfs) 
+      if (ipfs)
         await ipfs.stop()
     })
 
@@ -180,13 +180,13 @@ apis.forEach((IPFS) => {
     describe('get', async () => {
       let log
 
-      const expectedData = { 
+      const expectedData = {
         hash: 'QmXMNDsmtQHW92TSQBnS6zmgZwHXBv9cS65QvziowsfeLo',
         id: 'AAA',
         payload: 'one',
         next: [],
         v: 0,
-        clock: { 
+        clock: {
           id: 'AAA',
           time: 1,
         },
@@ -211,13 +211,13 @@ apis.forEach((IPFS) => {
     describe('has', async () => {
       let log
 
-      const expectedData = { 
+      const expectedData = {
         hash: 'QmXMNDsmtQHW92TSQBnS6zmgZwHXBv9cS65QvziowsfeLo',
         id: 'AAA',
         payload: 'one',
         next: [],
         v: 0,
-        clock: { 
+        clock: {
           id: 'AAA',
           time: 1,
         },
@@ -271,7 +271,7 @@ apis.forEach((IPFS) => {
             'QmZJmkhxvzKDJF1foDXq3ic1sNgXn8MUusuDNtaCQzcmrA',
           ]
         }
-        
+
         it('returns the log snapshot', () => {
           const snapshot = log.toSnapshot()
           assert.equal(snapshot.id, expectedData.id)
@@ -300,7 +300,7 @@ apis.forEach((IPFS) => {
         })
 
         it('log serialized to ipfs contains the correct data', async () => {
-          const expectedData = { 
+          const expectedData = {
             id: 'A',
             heads: ['QmTctXe3aLBowJkNFZjH1U5JzHJtP6bHjagno6AxcHuua4']
           }
@@ -617,7 +617,7 @@ apis.forEach((IPFS) => {
           console.error(e)
         }
         assert.equal(logA.length, items3.length + items2.length + items1.length)
-        // The last entry, 'entryC100', should be the only head 
+        // The last entry, 'entryC100', should be the only head
         // (it points to entryB100, entryB100 and entryC99)
         assert.equal(logA.heads.length, 1)
       })
@@ -652,7 +652,7 @@ apis.forEach((IPFS) => {
         log1.join(log2)
         log1.join(log2)
 
-        const expectedData = [ 
+        const expectedData = [
           'helloA1', 'helloB1', 'helloA2', 'helloB2',
         ]
 
@@ -672,7 +672,7 @@ apis.forEach((IPFS) => {
         log2.join(log1)
 
 
-        const expectedData = [ 
+        const expectedData = [
           'helloA1', 'helloB1', 'helloA2', 'helloB2',
         ]
 
@@ -690,7 +690,7 @@ apis.forEach((IPFS) => {
         await log2.append('helloB2')
         log2.join(log1)
 
-        const expectedData = [ 
+        const expectedData = [
           'helloA1', 'helloB1', 'helloA2', 'helloB2',
         ]
 
@@ -709,7 +709,7 @@ apis.forEach((IPFS) => {
         log2.join(log1)
 
         const expectedData = [
-          'helloA1', 'helloB1', 'helloA2', 'helloB2', 
+          'helloA1', 'helloB1', 'helloA2', 'helloB2',
         ]
 
         assert.equal(log2.length, 4)
@@ -729,7 +729,7 @@ apis.forEach((IPFS) => {
         log1.join(log3)
         log1.join(log4)
 
-        const expectedData = [ 
+        const expectedData = [
           'helloA1',
           'helloB1',
           'helloC1',
@@ -804,7 +804,7 @@ apis.forEach((IPFS) => {
         await log4.append('helloD6')
         assert.deepEqual(log4.clock.time, 8)
 
-        const expectedData = [ 
+        const expectedData = [
           { payload: 'helloA1', id: 'X', clock: { id: 'A', time: 1} },
           { payload: 'helloB1', id: 'X', clock: { id: 'B', time: 1} },
           { payload: 'helloD1', id: 'X', clock: { id: 'D', time: 1} },
@@ -861,7 +861,7 @@ apis.forEach((IPFS) => {
         assert.equal(log4.clock.id, 'D')
         assert.equal(log4.clock.time, 6)
 
-        const expectedData = [ 
+        const expectedData = [
           'helloA1',
           'helloB1',
           'helloD1',
@@ -889,7 +889,7 @@ apis.forEach((IPFS) => {
         it('joins only specified amount of entries - one entry', async () => {
           await log1.join(log2, 1)
 
-          const expectedData = [ 
+          const expectedData = [
             'helloB2',
           ]
           const lastEntry = last(log1.values)
@@ -902,7 +902,7 @@ apis.forEach((IPFS) => {
         it('joins only specified amount of entries - two entries', async () => {
           await log1.join(log2, 2)
 
-          const expectedData = [ 
+          const expectedData = [
             'helloA2', 'helloB2',
           ]
           const lastEntry = last(log1.values)
@@ -915,7 +915,7 @@ apis.forEach((IPFS) => {
         it('joins only specified amount of entries - three entries', async () => {
           await log1.join(log2, 3)
 
-          const expectedData = [ 
+          const expectedData = [
             'helloB1', 'helloA2', 'helloB2',
           ]
           const lastEntry = last(log1.values)
@@ -928,7 +928,7 @@ apis.forEach((IPFS) => {
         it('joins only specified amount of entries - (all) four entries', async () => {
           await log1.join(log2, 4)
 
-          const expectedData = [ 
+          const expectedData = [
             'helloA1', 'helloB1', 'helloA2', 'helloB2',
           ]
           const lastEntry = last(log1.values)
@@ -1206,7 +1206,7 @@ apis.forEach((IPFS) => {
         const a = await Log.fromEntry(ipfs, last(items1), amount)
         assert.equal(a.length, amount)
 
-        const itemsInB = [ 
+        const itemsInB = [
           'entryA1',
           'entryB1',
           'entryA2',
@@ -1226,7 +1226,7 @@ apis.forEach((IPFS) => {
           'entryA9',
           'entryB9',
           'entryA10',
-          'entryB10' 
+          'entryB10'
         ]
 
         const b = await Log.fromEntry(ipfs, last(items2), amount * 2)
@@ -1237,7 +1237,7 @@ apis.forEach((IPFS) => {
         await c.append('EOF')
         assert.equal(c.length, amount * 3 + 1)
 
-        const tmp = [ 
+        const tmp = [
           'entryA1',
           'entryB1',
           'entryC1',
@@ -1268,7 +1268,7 @@ apis.forEach((IPFS) => {
           'entryA10',
           'entryB10',
           'entryC10',
-          'EOF' 
+          'EOF'
         ]
         assert.deepEqual(c.values.map(e => e.payload), tmp)
 
@@ -1316,12 +1316,12 @@ apis.forEach((IPFS) => {
           await log1.append('entryA' + i)
         }
 
-        const expectedData = [ 
-          'entryA1', 'entryB1', 'entryA2', 'entryB2', 
-          'entryA3', 'entryB3', 'entryA4', 'entryB4', 
+        const expectedData = [
+          'entryA1', 'entryB1', 'entryA2', 'entryB2',
+          'entryA3', 'entryB3', 'entryA4', 'entryB4',
           'entryA5', 'entryB5',
           'entryA6', 'entryA7', 'entryA8', 'entryA9', 'entryA10',
-          'entryA11', 'entryA12', 'entryA13', 'entryA14', 'entryA15' 
+          'entryA11', 'entryA12', 'entryA13', 'entryA14', 'entryA15'
         ]
 
         assert.deepEqual(log1.values.map(e => e.payload), expectedData)
@@ -1352,9 +1352,9 @@ apis.forEach((IPFS) => {
         await log.append('entryC0')
         log.join(logA, 16)
 
-        const expectedData = [ 
-          'entryA1', 'entryB1', 'entryA2', 'entryB2', 
-          'entryA3', 'entryB3', 'entryA4', 'entryB4', 
+        const expectedData = [
+          'entryA1', 'entryB1', 'entryA2', 'entryB2',
+          'entryA3', 'entryB3', 'entryA4', 'entryB4',
           'entryA5', 'entryB5',
           'entryA6',
           'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10',
@@ -1368,24 +1368,24 @@ apis.forEach((IPFS) => {
         let log = testLog.log
         const expectedData = testLog.expectedData
 
-        const expectedData2 = [ 
+        const expectedData2 = [
           'entryA1', 'entryB1', 'entryA2', 'entryB2',
-          'entryA3', 'entryB3', 'entryA4', 'entryB4', 
+          'entryA3', 'entryB3', 'entryA4', 'entryB4',
           'entryA5', 'entryB5',
           'entryA6', 'entryA7', 'entryA8', 'entryA9', 'entryA10',
         ]
 
-        const expectedData3 = [ 
+        const expectedData3 = [
           'entryA1', 'entryB1', 'entryA2', 'entryB2',
           'entryA3', 'entryB3', 'entryA4', 'entryB4',
-          'entryA5', 'entryB5', 'entryA6', 'entryC0', 
+          'entryA5', 'entryB5', 'entryA6', 'entryC0',
           'entryA7', 'entryA8', 'entryA9',
         ]
 
-        const expectedData4 = [ 
+        const expectedData4 = [
           'entryA1', 'entryB1', 'entryA2', 'entryB2',
           'entryA3', 'entryB3', 'entryA4', 'entryB4',
-          'entryA5', 'entryA6', 'entryC0', 'entryA7', 
+          'entryA5', 'entryA6', 'entryC0', 'entryA7',
           'entryA8', 'entryA9', 'entryA10',
         ]
 
@@ -1468,7 +1468,7 @@ apis.forEach((IPFS) => {
         // First 5
         let res = await Log.fromMultihash(ipfs, mh, 5)
 
-        const first5 = [ 
+        const first5 = [
           'entryA5', 'entryB5', 'entryC0', 'entryA9', 'entryA10',
         ]
 
@@ -1479,9 +1479,9 @@ apis.forEach((IPFS) => {
         // First 11
         res = await Log.fromMultihash(ipfs, mh, 11)
 
-        const first11 = [ 
-          'entryA3', 'entryB3', 'entryA4', 'entryB4', 
-          'entryA5', 'entryB5', 
+        const first11 = [
+          'entryA3', 'entryB3', 'entryA4', 'entryB4',
+          'entryA5', 'entryB5',
           'entryC0',
           'entryA7', 'entryA8', 'entryA9', 'entryA10',
         ]
@@ -1491,10 +1491,10 @@ apis.forEach((IPFS) => {
         // All but one
         res = await Log.fromMultihash(ipfs, mh, 16 - 1)
 
-        const all = [ 
+        const all = [
           'entryA1', /* excl */ 'entryA2', 'entryB2', 'entryA3', 'entryB3',
           'entryA4', 'entryB4', 'entryA5', 'entryB5',
-          'entryA6', 
+          'entryA6',
           'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10',
         ]
 
@@ -1534,7 +1534,7 @@ apis.forEach((IPFS) => {
         // First 5
         let res = await Log.fromMultihash(ipfs, mh, 5)
 
-        const first5 = [ 
+        const first5 = [
           'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10',
         ]
 
@@ -1543,7 +1543,7 @@ apis.forEach((IPFS) => {
         // First 11
         res = await Log.fromMultihash(ipfs, mh, 11)
 
-        const first11 = [ 
+        const first11 = [
              'entryA1', 'entryA2', 'entryA3', 'entryA4',
              'entryA5', 'entryA6',
              'entryC0',
@@ -1555,10 +1555,10 @@ apis.forEach((IPFS) => {
         // All but one
         res = await Log.fromMultihash(ipfs, mh, 16 - 1)
 
-        const all = [ 
+        const all = [
           'entryA1', /* excl */ 'entryA2', 'entryB2', 'entryA3', 'entryB3',
           'entryA4', 'entryB4', 'entryA5', 'entryB5',
-          'entryA6', 
+          'entryA6',
           'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10',
         ]
 

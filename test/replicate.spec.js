@@ -80,10 +80,10 @@ apis.forEach((IPFS) => {
     })
 
     after(async () => {
-      if (ipfs1) 
+      if (ipfs1)
         await ipfs1.stop()
 
-      if (ipfs2) 
+      if (ipfs2)
         await ipfs2.stop()
     })
 
@@ -127,12 +127,12 @@ apis.forEach((IPFS) => {
         input1 = new Log(ipfs1, 'A', null, null, null, 'peerA')
         input2 = new Log(ipfs2, 'A', null, null, null, 'peerB')
         ipfs1.pubsub.subscribe(channel, handleMessage, (err) => {
-          if (err) 
+          if (err)
             return done(err)
           ipfs2.pubsub.subscribe(channel, handleMessage2, (err) => {
-            if (err) 
+            if (err)
               done(err)
-            else 
+            else
               done()
           })
         })

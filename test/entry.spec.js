@@ -25,7 +25,7 @@ apis.forEach((IPFS) => {
 
     before((done) => {
       rmrf.sync(dataDir)
-      ipfs = new IPFS({ 
+      ipfs = new IPFS({
         repo: new IPFSRepo(dataDir, repoConf),
         EXPERIMENTAL: {
           pubsub: true,
@@ -38,7 +38,7 @@ apis.forEach((IPFS) => {
     })
 
     after(async () => {
-      if (ipfs) 
+      if (ipfs)
         await ipfs.stop()
     })
 

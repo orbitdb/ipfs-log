@@ -59,7 +59,7 @@ class Log extends GSet {
 
     // Signing related setup
     this._keystore = this._storage.keystore
-    this._key = key 
+    this._key = key
     this._keys = Array.isArray(keys) ? keys : [keys]
 
     // Add entries to the internal cache
@@ -200,7 +200,7 @@ class Log extends GSet {
   async append (data, pointerCount = 1) {
     // Verify that we're allowed to append
     if ((this._key && this._key.getPublic)
-        && !this._keys.includes(this._key.getPublic('hex')) 
+        && !this._keys.includes(this._key.getPublic('hex'))
         && !this._keys.includes('*')) {
       throw new Error("Not allowed to write")
     }
@@ -256,12 +256,12 @@ class Log extends GSet {
         if (!entry.sig) throw new Error("Entry doesn't have a signature")
 
         if (this._keys.length === 1 && this._keys[0] === this._key ) {
-          if (entry.id !== this.id) 
+          if (entry.id !== this.id)
             throw new Error("Entry doesn't belong in this log (wrong ID)")
         }
 
-        if (this._keys.length > 0 
-            && !this._keys.includes('*') 
+        if (this._keys.length > 0
+            && !this._keys.includes('*')
             && !checkAllKeys(this._keys.concat([this._key]), entry)) {
           console.warn("Warning: Input log contains entries that are not allowed in this log. Logs weren't joined.")
           return false
