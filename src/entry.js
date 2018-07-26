@@ -45,7 +45,7 @@ class Entry {
 
     // If signing key was passedd, sign the enrty
     if (keystore && signKey) {
-      entry = await Entry.signEntry(keystore, entry, signKey) 
+      entry = await Entry.signEntry(keystore, entry, signKey)
     }
 
     entry.hash = await Entry.toMultihash(ipfs, entry)

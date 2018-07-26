@@ -55,11 +55,11 @@ class EntryIO {
       return new Promise((resolve, reject) => {
         // Resolve the promise after a timeout (if given) in order to
         // not get stuck loading a block that is unreachable
-        const timer = timeout 
+        const timer = timeout
         ? setTimeout(() => {
             console.warn(`Warning: Couldn't fetch entry '${hash}', request timed out (${timeout}ms)`)
             resolve()
-          } , timeout) 
+          } , timeout)
         : null
 
         const addToResults = (entry) => {

@@ -28,9 +28,9 @@ class LogCreator {
       return log
     }
 
-    const expectedData = [ 
+    const expectedData = [
       'entryA1', 'entryB1', 'entryA2', 'entryB2', 'entryA3', 'entryB3',
-      'entryA4', 'entryB4', 'entryA5', 'entryB5', 
+      'entryA4', 'entryB4', 'entryA5', 'entryB5',
       'entryA6',
       'entryC0',
       'entryA7', 'entryA8', 'entryA9', 'entryA10',

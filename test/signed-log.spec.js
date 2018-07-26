@@ -17,7 +17,7 @@ const repoConf = {
   },
 }
 
-const ipfsConf = { 
+const ipfsConf = {
   repo: new IPFSRepo(dataDir, repoConf),
   EXPERIMENTAL: {
     pubsub: true,
@@ -44,13 +44,13 @@ apis.forEach((IPFS) => {
       key2 = keystore.getKey('B')
       key3 = keystore.getKey('C')
       ipfs = new IPFS(ipfsConf)
-      ipfs.keystore = keystore 
+      ipfs.keystore = keystore
       ipfs.on('error', done)
       ipfs.on('ready', () => done())
     })
 
     after(async () => {
-      if (ipfs) 
+      if (ipfs)
         await ipfs.stop()
     })
 
