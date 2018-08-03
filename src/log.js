@@ -32,14 +32,19 @@ const uniqueEntriesReducer = (res, acc) => {
 class Log extends GSet {
   /**
    * Create a new Log instance
-   * @param  {IPFS}           ipfs    An IPFS instance
-   * @param  {String}         id      ID of the log
-   * @param  {[Array<Entry>]} entries An Array of Entries from which to create the log from
-   * @param  {[Array<Entry>]} heads   Set the heads of the log
-   * @param  {[Clock]}        clock   Set the clock of the log
-   * @return {Log}            Log
+   * @param  {IPFS}           ipfs            An IPFS instance
+   * @param  {String}         [id]            ID of the log
+   * @param  {Array<Entry>}   [entries]       An Array of Entries from which to create the log from
+   * @param  {Array<Entry>}   [heads]         Set the heads of the log
+   * @param  {Clock}          [clock]         Set the clock of the log
+   * @param  {Function}       [verifyEntry]   function to be called for every entry in a log that is about to
+   * be joined. The arguments will be the entry to verify and a reference
+   * to the log itself and the verification function should return true
+   * if the entry is valid and false if it is not. Logs containing entries
+   * marked as invalid by this function will not be joined
+   * @return {Log}                            Log
    */
-  constructor (ipfs, id, entries, heads, clock, key, keys = []) {
+  constructor (ipfs, id, entries, heads, clock, key, keys = [], verifyEntry = null, decorateEntry = null) {
     if (!isDefined(ipfs)) {
       throw LogError.ImmutableDBNotDefinedError()
     }
@@ -61,6 +66,12 @@ class Log extends GSet {
     this._keystore = this._storage.keystore
     this._key = key 
     this._keys = Array.isArray(keys) ? keys : [keys]
+
+    // Custom verification function
+    this._verifyEntry = verifyEntry
+
+    // Custom signing function
+    this._decorateEntry = decorateEntry
 
     // Add entries to the internal cache
     entries = entries || []
@@ -211,7 +222,7 @@ class Log extends GSet {
     // Get the required amount of hashes to next entries (as per current state of the log)
     const nexts = Object.keys(this.traverse(this.heads, pointerCount))
     // Create the entry and add it to the internal cache
-    const entry = await Entry.create(this._storage, this._keystore, this.id, data, nexts, this.clock, this._key)
+    const entry = await Entry.create(this._storage, this._keystore, this.id, data, nexts, this.clock, this._key, this._decorateEntry)
     this._entryIndex[entry.hash] = entry
     nexts.forEach(e => this._nextsIndex[e] = entry.hash)
     this._headsIndex = {}
@@ -243,41 +254,69 @@ class Log extends GSet {
     // Verify the entries
     // TODO: move to Entry
     const verifyEntries = async (entries) => {
-      const isTrue = e => e === true
-      const getPubKey = e => e.getPublic ? e.getPublic('hex') : e
-      const checkAllKeys = (keys, entry) => {
-        const keyMatches = e => e === entry.key
-        return keys.find(keyMatches)
+      const verifications = []
+
+      // if a key was given, verify the signature
+      if (this._key && this._key.getPublic) {
+        const getPubKey = e => e.getPublic ? e.getPublic('hex') : e
+        const checkAllKeys = (keys, entry) => {
+          const keyMatches = e => e === entry.key
+          return keys.find(keyMatches)
+        }
+        const pubkeys = this._keys.map(getPubKey)
+
+        const verifySignature = async (entry) => {
+          if (!entry.key) throw new Error("Entry doesn't have a public key")
+          if (!entry.sig) throw new Error("Entry doesn't have a signature")
+
+          if (this._keys.length === 1 && this._keys[0] === this._key) {
+            if (entry.id !== this.id) 
+              throw new Error("Entry doesn't belong in this log (wrong ID)")
+          }
+
+          if (this._keys.length > 0 
+              && !this._keys.includes('*') 
+              && !checkAllKeys(this._keys.concat([this._key]), entry)) {
+            console.warn("Warning: Input log contains entries that are not allowed in this log. Logs weren't joined.")
+            return false
+          }
+
+          try {
+            await Entry.verifyEntry(entry, this._keystore)
+          } catch (e) {
+            throw new Error(`Invalid signature in entry '${entry.hash}'`)
+          }
+
+          return true
+        }
+        verifications.push(verifySignature)
       }
-      const pubkeys = this._keys.map(getPubKey)
 
-      const verify = async (entry) => {
-        if (!entry.key) throw new Error("Entry doesn't have a public key")
-        if (!entry.sig) throw new Error("Entry doesn't have a signature")
-
-        if (this._keys.length === 1 && this._keys[0] === this._key ) {
-          if (entry.id !== this.id) 
-            throw new Error("Entry doesn't belong in this log (wrong ID)")
-        }
-
-        if (this._keys.length > 0 
-            && !this._keys.includes('*') 
-            && !checkAllKeys(this._keys.concat([this._key]), entry)) {
-          console.warn("Warning: Input log contains entries that are not allowed in this log. Logs weren't joined.")
-          return false
-        }
-
+      // if a custom verification function was given, also run it for every entry
+      const verifyCustom = async (entry) => {
         try {
-          await Entry.verifyEntry(entry, this._keystore)
+          const valid = Boolean(await this._verifyEntry(entry, this))
+          if (!valid) console.warn("Warning: Input log contains entries that have not passed Custom Verification. Logs weren't joined.")
+          return valid
         } catch (e) {
-          throw new Error(`Invalid signature in entry '${entry.hash}'`)
+          throw new Error(`Custom validation errored for entry '${entry.hash}'`)
+        }
+      }
+      if (typeof this._verifyEntry === 'function') verifications.push(verifyCustom)
+
+      if (verifications.length > 0) {
+        // run verifications in parallel for the same entry
+        const verify = async (entry) => {
+          const result = await Promise.all(verifications.map(v => v(entry)))
+          for (const passed of result) if (!passed) return false
+          return true 
         }
 
-        return true
+        const checked = await pMap(entries, verify)
+        return checked.every(e => e === true)
+      } else {
+        return true;
       }
-
-      const checked = await pMap(entries, verify)
-      return checked.every(isTrue)
     }
 
     const difference = (log, exclude) => {
@@ -307,13 +346,10 @@ class Log extends GSet {
     // Merge the entries
     const newItems = difference(log, this)
 
-    // if a key was given, verify the entries from the incoming log
-    if (this._key && this._key.getPublic) {
-      const canJoin = await verifyEntries(Object.values(newItems))
-      // Return early if any of the given entries didn't verify
-      if (!canJoin)
-        return this
-    }
+    const canJoin = await verifyEntries(Object.values(newItems))
+    // Return early if any of the given entries didn't verify
+    if (!canJoin)
+      return this
 
     // Update the internal entry index
     this._entryIndex = Object.assign(this._entryIndex, newItems)
@@ -424,15 +460,16 @@ class Log extends GSet {
    * @param {string} hash        Multihash (as a Base58 encoded string) to create the log from
    * @param {Number} [length=-1] How many items to include in the log
    * @param {Function(hash, entry, parent, depth)} onProgressCallback
+   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}      New Log
    */
-  static fromMultihash (ipfs, hash, length = -1, exclude, key, onProgressCallback) {
+  static fromMultihash (ipfs, hash, length = -1, exclude, key, onProgressCallback, verifyEntry) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromMultihash(ipfs, hash, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, key))
+      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, key, null, verifyEntry))
   }
 
   /**
@@ -441,15 +478,16 @@ class Log extends GSet {
    * @param {string} hash        Multihash (as a Base58 encoded string) of the Entry from which to create the log from
    * @param {Number} [length=-1] How many entries to include in the log
    * @param {Function(hash, entry, parent, depth)} onProgressCallback
+   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}      New Log
    */
-  static fromEntryHash (ipfs, hash, id, length = -1, exclude, key, keys, onProgressCallback) {
+  static fromEntryHash (ipfs, hash, id, length = -1, exclude, key, keys, onProgressCallback, verifyEntry) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(hash)) throw new Error("'hash' must be defined")
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntryHash(ipfs, hash, id, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, id, data.values, null, null, key, keys))
+      .then((data) => new Log(ipfs, id, data.values, null, null, key, keys, verifyEntry))
   }
 
   /**
@@ -458,14 +496,15 @@ class Log extends GSet {
    * @param {Object} json        Log snapshot as JSON object
    * @param {Number} [length=-1] How many entries to include in the log
    * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
+   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}      New Log
    */
-  static fromJSON (ipfs, json, length = -1, key, keys, timeout, onProgressCallback) {
+  static fromJSON (ipfs, json, length = -1, key, keys, timeout, onProgressCallback, verifyEntry) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromJSON(ipfs, json, length, key, timeout, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, key, keys))
+      .then((data) => new Log(ipfs, data.id, data.values, null, null, key, keys, verifyEntry))
   }
 
   /**
@@ -475,15 +514,16 @@ class Log extends GSet {
    * @param {Number}              [length=-1]   How many entries to include. Default: infinite.
    * @param {Array<Entry|string>} [exclude]     Array of entries or hashes or entries to not fetch (foe eg. cached entries)
    * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
+   * @param {Function} [verifyEntry]   Custom entry verification function
    * @return {Promise<Log>}       New Log
    */
-  static fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback) {
+  static fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback, verifyEntry) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values))
+      .then((data) => new Log(ipfs, data.id, data.values, null, null, null, null, verifyEntry))
   }
 
   /**

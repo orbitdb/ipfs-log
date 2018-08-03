@@ -82,6 +82,19 @@ apis.forEach((IPFS) => {
       assert.equal(log.values[0].key, key1.getPublic('hex'))
     })
 
+    it('entries contain extra properties when decorated', async () => {
+      const decorateEntry = async entry => {
+        entry.chainSig = await keystore.sign(entry.key)
+        return entry
+        }
+      const log = new Log(ipfs, 'A', null, null, null, key1, [key1.getPublic('hex')], null, decorateEntry)
+      await log.append('one')
+      const chainSig = await keystore.sign(log.values[0].key)
+
+      assert.notEqual(log.values[0].chainSig, null)
+      assert.equal(log.values[0].chainSig, chainSig)
+      })
+
     it('doesn\'t sign entries when key is not defined', async () => {
       const log = new Log(ipfs, 'A')
       await log.append('one')

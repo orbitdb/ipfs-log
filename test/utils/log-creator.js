@@ -17,14 +17,14 @@ class LogCreator {
       for(let i = 1; i <= 5; i ++) {
         await logB.append('entryB' + i)
       }
-      log3.join(logA)
-      log3.join(logB)
+      await log3.join(logA)
+      await log3.join(logB)
       for(let i = 6; i <= 10; i ++) {
         await logA.append('entryA' + i)
       }
-      log.join(log3)
+      await log.join(log3)
       await log.append('entryC0')
-      log.join(logA)
+      await log.join(logA)
       return log
     }
 
@@ -51,9 +51,9 @@ class LogCreator {
       let log  = new Log(ipfs, 'X', null, null, null, 'log')
       for(let i = 1; i <= amount; i ++) {
         await logA.append('entryA' + i)
-        logB.join(logA)
+        await logB.join(logA)
         await logB.append('entryB' + i)
-        logA.join(logB)
+        await logA.join(logB)
         expectedData.push('entryA' + i)
         expectedData.push('entryB' + i)
       }
