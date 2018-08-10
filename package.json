@@ -17,6 +17,7 @@
     "p-whilst": "^1.0.0"
   },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-plugin-transform-runtime": "^6.23.0",
@@ -24,6 +25,7 @@
     "datastore-level": "~0.8.0",
     "ipfs": "~0.30.0",
     "ipfs-repo": "~0.22.1",
+    "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
     "orbit-db-keystore": "~0.1.0",
     "rimraf": "^2.6.1",

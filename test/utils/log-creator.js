@@ -3,13 +3,15 @@
 const Entry = require('../../src/entry')
 const Log = require('../../src/log.js')
 
+const getTestEntryValidator = require('./test-entry-validator')
+
 class LogCreator {
   static async createLog1 (ipfs) {
     const create = async () => {
-      let logA = new Log(ipfs, 'X', null, null, null, 'A')
-      let logB = new Log(ipfs, 'X', null, null, null, 'B')
-      let log3 = new Log(ipfs, 'X', null, null, null, '3')
-      let log  = new Log(ipfs, 'X', null, null, null, 'log')
+      let logA = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('A'))
+      let logB = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('B'))
+      let log3 = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('3'))
+      let log  = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('log'))
 
       for(let i = 1; i <= 5; i ++) {
         await logA.append('entryA' + i)
@@ -17,20 +19,20 @@ class LogCreator {
       for(let i = 1; i <= 5; i ++) {
         await logB.append('entryB' + i)
       }
-      log3.join(logA)
-      log3.join(logB)
+      await log3.join(logA)
+      await log3.join(logB)
       for(let i = 6; i <= 10; i ++) {
         await logA.append('entryA' + i)
       }
-      log.join(log3)
+      await log.join(log3)
       await log.append('entryC0')
-      log.join(logA)
+      await log.join(logA)
       return log
     }
 
-    const expectedData = [ 
+    const expectedData = [
       'entryA1', 'entryB1', 'entryA2', 'entryB2', 'entryA3', 'entryB3',
-      'entryA4', 'entryB4', 'entryA5', 'entryB5', 
+      'entryA4', 'entryB4', 'entryA5', 'entryB5',
       'entryA6',
       'entryC0',
       'entryA7', 'entryA8', 'entryA9', 'entryA10',
@@ -46,14 +48,14 @@ class LogCreator {
     let expectedData = []
 
     const create = async () => {
-      let logA = new Log(ipfs, 'X', null, null, null, 'A')
-      let logB = new Log(ipfs, 'X', null, null, null, 'B')
-      let log  = new Log(ipfs, 'X', null, null, null, 'log')
+      let logA = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('A'))
+      let logB = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('B'))
+      let log  = new Log(ipfs, 'X', null, null, null, getTestEntryValidator('log'))
       for(let i = 1; i <= amount; i ++) {
         await logA.append('entryA' + i)
-        logB.join(logA)
+        await logB.join(logA)
         await logB.append('entryB' + i)
-        logA.join(logB)
+        await logA.join(logB)
         expectedData.push('entryA' + i)
         expectedData.push('entryB' + i)
       }

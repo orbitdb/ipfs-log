@@ -17,8 +17,9 @@ class Entry {
    * // { hash: "Qm...Foo", payload: "hello", next: [] }
    * @returns {Promise<Entry>}
    */
-  static async create (ipfs, keystore, id, data, next = [], clock, signKey) {
+  static async create (ipfs, entryValidator, id, data, next = [], clock) {
     if (!isDefined(ipfs)) throw IpfsNotDefinedError()
+    if (!isDefined(entryValidator)) throw new Error("Entry validator is null or undefined")
     if (!isDefined(id)) throw new Error('Entry requires an id')
     if (!isDefined(data)) throw new Error('Entry requires data')
     if (!isDefined(next) || !Array.isArray(next)) throw new Error("'next' argument is not an array")
@@ -31,7 +32,7 @@ class Entry {
     // Take the id of the given clock by default,
     // if clock not given, take the signing key if it's a Key instance,
     // or if none given, take the id as the clock id
-    const clockId = clock ? clock.id : (signKey ? signKey.getPublic('hex') : id)
+    const clockId = clock ? clock.id : (entryValidator ? entryValidator.publicKey : id)
     const clockTime = clock ? clock.time : null
 
     let entry = {
@@ -43,34 +44,27 @@ class Entry {
       clock: new Clock(clockId, clockTime),
     }
 
-    // If signing key was passedd, sign the enrty
-    if (keystore && signKey) {
-      entry = await Entry.signEntry(keystore, entry, signKey) 
+    const signature = await entryValidator.signEntry(entry)
+    entry.key = entryValidator.publicKey
+    entry.sig = signature
+    entry.hash = await Entry.toMultihash(ipfs, entry)
+
+    return entry
+  }
+
+  static async verify (entry, entryValidator) {
+    if (!entry.key) throw new Error("Entry doesn't have a public key")
+    if (!entry.sig) throw new Error("Entry doesn't have a signature")
+    if (!entryValidator) throw new Error("Entry validator is null or undefined, cannot verify entry")
+    if (!Entry.isEntry(entry)) throw new Error("Not a valid Log entry")
+
+    // Throws an error if verification fails
+    const isValid = await entryValidator.verifyEntrySignature(entry)
+    if (!isValid) {
+      throw new Error(`Invalid signature on entry: ${entry.hash}`)
     }
 
-    entry.hash = await Entry.toMultihash(ipfs, entry)
-    return entry
-  }
-
-  static async signEntry (keystore, entry, key) {
-    const signature = await keystore.sign(key, Buffer.from(JSON.stringify(entry)))
-    entry.sig = signature
-    entry.key = key.getPublic('hex')
-    return entry
-  }
-
-  static async verifyEntry (entry, keystore) {
-    const e = Object.assign({}, {
-      hash: null,
-      id: entry.id,
-      payload: entry.payload,
-      next: entry.next,
-      v: entry.v,
-      clock: entry.clock,
-    })
-
-    const pubKey = await keystore.importPublicKey(entry.key)
-    await keystore.verify(entry.sig, pubKey, Buffer.from(JSON.stringify(e)))
+    return true
   }
 
   /**
