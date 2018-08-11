@@ -4,9 +4,7 @@ const Entry = require('./entry')
 const EntryIO = require('./entry-io')
 const Clock = require('./lamport-clock')
 const LogError = require('./log-errors')
-const isDefined = require('./utils/is-defined')
-const _uniques = require('./utils/uniques')
-const difference = require('./utils/difference')
+const { isDefined, findUniques, difference } = require('./utils')
 
 const last = (arr, n) => arr.slice(arr.length - n, arr.length)
 
@@ -126,7 +124,7 @@ class LogIO {
     return EntryIO.fetchParallel(immutabledb, hashes, length, excludeHashes, null, null, onProgressCallback)
       .then((entries) => {
         var combined = sourceEntries.concat(entries)
-        var uniques = _uniques(combined, 'hash').sort(Entry.compare)
+        var uniques = findUniques(combined, 'hash').sort(Entry.compare)
 
         // Cap the result at the right size by taking the last n entries
         const sliced = uniques.slice(length > -1 ? -length : -uniques.length)

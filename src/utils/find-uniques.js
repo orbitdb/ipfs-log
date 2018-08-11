@@ -1,6 +1,6 @@
 'use strict'
 
-function uniques (value, key) {
+function findUniques (value, key) {
   // Create an index of the collection
   let uniques = {}
   var get = e => uniques[e]
@@ -9,4 +9,4 @@ function uniques (value, key) {
   return Object.keys(uniques).map(get)
 }
 
-module.exports = uniques
+module.exports = findUniques
