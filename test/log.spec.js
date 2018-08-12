@@ -376,7 +376,7 @@ apis.forEach((IPFS) => {
         it('creates a log from ipfs hash - three entries', async () => {
           const hash = await log.toMultihash()
           // fromMultihash length = -1
-          const res = await Log.fromMultihash(ipfs, hash, -1, null, acl1, id1)
+          const res = await Log.fromMultihash(ipfs, hash, -1, null, log._acl, log._identity)
           assert.equal(res.length, 3)
           assert.equal(res.values[0].payload, 'one')
           assert.equal(res.values[0].clock.time, 1)
@@ -389,7 +389,7 @@ apis.forEach((IPFS) => {
         it('has the right sequence number after creation and appending', async () => {
           const hash = await log.toMultihash()
           // fromMultihash length = -1
-          let res = await Log.fromMultihash(ipfs, hash, -1, null, acl, identity)
+          let res = await Log.fromMultihash(ipfs, hash, -1, null, log._acl, log._identity)
           assert.equal(res.length, 3)
           await res.append('four')
           assert.equal(res.length, 4)
@@ -398,9 +398,9 @@ apis.forEach((IPFS) => {
         })
 
         it('creates a log from ipfs hash that has three heads', async () => {
-          let log1 = new Log(ipfs, 'A', null, null, null, acl1, id1)
-          let log2 = new Log(ipfs, 'B', null, null, null, acl2, id2)
-          let log3 = new Log(ipfs, 'C', null, null, null, acl3, id3)
+          let log1 = new Log(ipfs, 'A', null, null, null, joinACL1, joinID1)
+          let log2 = new Log(ipfs, 'B', null, null, null, joinACL2, joinID2)
+          let log3 = new Log(ipfs, 'C', null, null, null, joinACL3, joinID3)
           await log1.append('one')
           await log2.append('two')
           await log3.append('three')
@@ -408,7 +408,7 @@ apis.forEach((IPFS) => {
           await log1.join(log3)
           const hash = await log1.toMultihash()
           // fromMultihash length = -1
-          const res = await Log.fromMultihash(ipfs, hash, -1, null, acl, identity)
+          const res = await Log.fromMultihash(ipfs, hash, -1, null, log1._acl, log1._identity)
           assert.equal(res.length, 3)
           assert.equal(res.heads.length, 3)
           assert.equal(res.heads[0].payload, 'one')
@@ -424,7 +424,7 @@ apis.forEach((IPFS) => {
             await log.append(i.toString())
           }
           const hash = await log.toMultihash()
-          const res = await Log.fromMultihash(ipfs, hash, size, null, acl, identity)
+          const res = await Log.fromMultihash(ipfs, hash, size, null, log._acl, log._identity)
           assert.equal(res.length, size)
         })
 
@@ -435,14 +435,14 @@ apis.forEach((IPFS) => {
             await log.append(i.toString())
           }
           const hash = await log.toMultihash()
-          const res = await Log.fromMultihash(ipfs, hash, -1, null, acl, identity)
+          const res = await Log.fromMultihash(ipfs, hash, -1, null, log._acl, log._identity)
           assert.equal(res.length, amount)
         })
 
-        it('throws an error if ipfs is not defined', () => {
+        it('throws an error if ipfs is not defined', async () => {
           let err
           try {
-            const log = Log.fromMultihash()
+            const log = await Log.fromMultihash(null, 'deadbeef')
           } catch (e) {
             err = e
           }
@@ -450,15 +450,15 @@ apis.forEach((IPFS) => {
           assert.equal(err.message, 'ImmutableDB instance not defined')
         })
 
-        it('throws an error if hash is not defined', () => {
+        it('throws an error if hash is not defined', async () => {
           let err
           try {
-            const log = Log.fromMultihash(ipfs)
+            const log = await Log.fromMultihash(ipfs)
           } catch (e) {
             err = e
           }
           assert.notEqual(err, null)
-          assert.equal(err.message, 'Invalid hash: undefined')
+          assert.equal(err.message, 'Invalid hash: "undefined", cannot create log')
         })
 
         it('throws an error when data from hash is not instance of Log', async () => {
@@ -981,7 +981,7 @@ apis.forEach((IPFS) => {
         let fixture = await LogCreator.createLog1(ipfs)
         let data = fixture.log
 
-        let log = await Log.fromEntry(ipfs, data.heads, -1, null, acl1, id1)
+        let log = await Log.fromEntry(ipfs, data.heads, -1, null, data._acl, data._identity)
         assert.equal(log.id, data.heads[0].id)
         assert.equal(log.length, 16)
         assert.deepEqual(log.values.map(e => e.payload), fixture.expectedData)
@@ -991,13 +991,13 @@ apis.forEach((IPFS) => {
         let fixture = await LogCreator.createLog1(ipfs)
         let data = fixture.log
 
-        let log1 = await Log.fromEntry(ipfs, data.heads, data.heads.length, null, acl1, id1)
+        let log1 = await Log.fromEntry(ipfs, data.heads, data.heads.length, null, data._acl, data._identity)
         assert.equal(log1.id, data.heads[0].id)
         assert.equal(log1.length, data.heads.length)
         assert.equal(log1.values[0].payload, 'entryC0')
         assert.equal(log1.values[1].payload, 'entryA10')
 
-        let log2 = await Log.fromEntry(ipfs, data.heads, 4, null, acl1, id1)
+        let log2 = await Log.fromEntry(ipfs, data.heads, 4, null, data._acl, data._identity)
         assert.equal(log2.id, data.heads[0].id)
         assert.equal(log2.length, 4)
         assert.equal(log2.values[0].payload, 'entryC0')
@@ -1005,7 +1005,7 @@ apis.forEach((IPFS) => {
         assert.equal(log2.values[2].payload, 'entryA9')
         assert.equal(log2.values[3].payload, 'entryA10')
 
-        let log3 = await Log.fromEntry(ipfs, data.heads, 7, null, acl1, id1)
+        let log3 = await Log.fromEntry(ipfs, data.heads, 7, null, data._acl, data._identity)
         assert.equal(log3.id, data.heads[0].id)
         assert.equal(log3.length, 7)
         assert.equal(log3.values[0].payload, 'entryB5')
@@ -1064,11 +1064,11 @@ apis.forEach((IPFS) => {
         }
 
         // limit to 10 entries
-        const a = await Log.fromEntry(ipfs, last(items1), 10, null, acl, identity)
+        const a = await Log.fromEntry(ipfs, last(items1), 10, null, acl1, id1)
         assert.equal(a.length, 10)
 
         // limit to 42 entries
-        const b = await Log.fromEntry(ipfs, last(items1), 42, null, acl, identity)
+        const b = await Log.fromEntry(ipfs, last(items1), 42, null, acl1, id1)
         assert.equal(b.length, 42)
       })
 
@@ -1132,19 +1132,19 @@ apis.forEach((IPFS) => {
         })
 
         it('returns all entries - no excluded entries', async () => {
-          const a = await Log.fromEntry(ipfs, last(items1), -1, null, acl, identity)
+          const a = await Log.fromEntry(ipfs, last(items1), -1, null, acl1, id1)
           assert.equal(a.length, amount)
           assert.equal(a.values[0].hash, items1[0].hash)
         })
 
         it('returns all entries - including excluded entries', async () => {
           // One entry
-          const a = await Log.fromEntry(ipfs, last(items1), -1, [items1[0]], acl, identity)
+          const a = await Log.fromEntry(ipfs, last(items1), -1, [items1[0]], acl1, id1)
           assert.equal(a.length, amount)
           assert.equal(a.values[0].hash, items1[0].hash)
 
           // All entries
-          const b = await Log.fromEntry(ipfs, last(items1), -1, items1, acl, identity)
+          const b = await Log.fromEntry(ipfs, last(items1), -1, items1, acl1, id1)
           assert.equal(b.length, amount)
           assert.equal(b.values[0].hash, items1[0].hash)
         })
@@ -1173,10 +1173,10 @@ apis.forEach((IPFS) => {
         const a = await Log.fromEntry(ipfs, [last(items1)], amount, null, acl1, id1)
         assert.equal(a.length, amount)
 
-        const b = await Log.fromEntry(ipfs, [last(items2)], amount * 2, null, acl2, id2)
+        const b = await Log.fromEntry(ipfs, [last(items2)], amount * 2, null, joinACL2, joinID2)
         assert.equal(b.length, amount * 2)
 
-        const c = await Log.fromEntry(ipfs, [last(items3)], amount * 3, null, acl3, id3)
+        const c = await Log.fromEntry(ipfs, [last(items3)], amount * 3, null, joinACL3, joinID3)
         assert.equal(c.length, amount * 3)
       })
 
@@ -1203,10 +1203,10 @@ apis.forEach((IPFS) => {
         const a = await Log.fromEntry(ipfs, last(items1), amount, null, acl1, id1)
         assert.equal(a.length, amount)
 
-        const b = await Log.fromEntry(ipfs, last(items2), amount * 2, null, acl2, id2)
+        const b = await Log.fromEntry(ipfs, last(items2), amount * 2, null, joinACL2, joinID2)
         assert.equal(b.length, amount * 2)
 
-        const c = await Log.fromEntry(ipfs, last(items3), amount * 3, null, acl3, id3)
+        const c = await Log.fromEntry(ipfs, last(items3), amount * 3, null, joinACL3, joinID3)
         assert.equal(c.length, amount * 3)
       })
 
@@ -1604,7 +1604,7 @@ apis.forEach((IPFS) => {
       it('throws an error if ipfs is not defined', async () => {
         let err
         try {
-          await Log.fromEntry()
+          await Log.fromEntry(null, [])
         } catch (e) {
           err = e
         }
