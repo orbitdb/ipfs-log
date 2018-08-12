@@ -25,8 +25,7 @@ class Entry {
 
     // Clean the next objects and convert to hashes
     const toEntry = (e) => e.hash ? e.hash : e
-    let nexts = next.filter(isDefined)
-      .map(toEntry)
+    let nexts = next.filter(isDefined).map(toEntry)
 
     // Take the id of the given clock by default,
     // if clock not given, take the signing key if it's a Key instance,
@@ -45,7 +44,7 @@ class Entry {
 
     // If signing key was passedd, sign the enrty
     if (keystore && signKey) {
-      entry = await Entry.signEntry(keystore, entry, signKey) 
+      entry = await Entry.signEntry(keystore, entry, signKey)
     }
 
     entry.hash = await Entry.toMultihash(ipfs, entry)
@@ -125,18 +124,23 @@ class Entry {
   static async fromMultihash (ipfs, hash) {
     if (!ipfs) throw IpfsNotDefinedError()
     if (!hash) throw new Error(`Invalid hash: ${hash}`)
-    const obj = await ipfs.object.get(hash, { enc: 'base58' })
-    let data = JSON.parse(obj.toJSON().data)
-    let entry = {
-      hash: hash,
+
+    const object = await ipfs.object.get(hash, { enc: 'base58' })
+    if (!object) throw new Error(`Entry not found for multihash: "${hash}"`)
+
+    const data = JSON.parse(object.toJSON().data)
+    const entry = {
+      hash,
       id: data.id,
       payload: data.payload,
       next: data.next,
       v: data.v,
       clock: data.clock,
     }
+
     if (data.sig) Object.assign(entry, { sig: data.sig })
     if (data.key) Object.assign(entry, { key: data.key })
+
     return entry
   }
 
