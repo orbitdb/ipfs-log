@@ -10,8 +10,8 @@ class EntryIO {
     const fetchOne = (hash) => EntryIO.fetchAll(ipfs, hash, length, exclude, timeout, onProgressCallback)
     const concatArrays = (arr1, arr2) => arr1.concat(arr2)
     const flatten = (arr) => arr.reduce(concatArrays, [])
-    const result = await pMap(hashes, fetchOne, { concurrency: Math.max(concurrency || hashes.length, 1) })
-    return flatten(result)
+    const entries = await pMap(hashes, fetchOne, { concurrency: Math.max(concurrency || hashes.length, 1) })
+    return flatten(entries) // Flatten the results
   }
 
   /**
@@ -55,11 +55,11 @@ class EntryIO {
       return new Promise(async (resolve, reject) => {
         // Resolve the promise after a timeout (if given) in order to
         // not get stuck loading a block that is unreachable
-        const timer = timeout 
+        const timer = timeout
         ? setTimeout(() => {
             console.warn(`Warning: Couldn't fetch entry '${hash}', request timed out (${timeout}ms)`)
             resolve()
-          } , timeout) 
+          } , timeout)
         : null
 
         const addToResults = (entry) => {
@@ -79,8 +79,8 @@ class EntryIO {
           const entry = await Entry.fromMultihash(ipfs, hash)
           addToResults(entry)
           resolve()
-        } catch (e) {
-          reject(e)
+        } catch (error) {
+          reject(error)
         }
       })
     }
