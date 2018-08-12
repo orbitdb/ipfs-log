@@ -17,7 +17,6 @@ class LogIO {
     if (!isDefined(immutabledb)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(log)) throw LogError.LogNotDefinedError()
     if (log.values.length < 1) throw new Error(`Can't serialize an empty log`)
-
     const dagNode = await immutabledb.object.put(log.toBuffer())
     return dagNode.toJSON().multihash
   }
@@ -50,7 +49,6 @@ class LogIO {
 
     const finalEntries = entries.slice().sort(Entry.compare)
     const heads = finalEntries.filter(e => logData.heads.includes(e.hash))
-
     return {
       id: logData.id,
       values: finalEntries,
@@ -68,7 +66,6 @@ class LogIO {
 
     // Make sure we pass hashes instead of objects to the fetcher function
     const excludeHashes = exclude// ? exclude.map(e => e.hash ? e.hash : e) : exclude
-
     const entries = await EntryIO.fetchParallel(ipfs, [entryHash], length, excludeHashes, null, null, onProgressCallback)
     // Cap the result at the right size by taking the last n entries,
     // or if given length is -1, then take all
@@ -80,8 +77,8 @@ class LogIO {
 
   static async fromJSON (ipfs, json, length = -1, key, timeout, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
-    const headHashes = json.heads.map(e => e.hash)
-    const entries = await EntryIO.fetchParallel(ipfs, headHashes, length, [], 16, timeout, onProgressCallback)
+    const entries = await EntryIO.fetchParallel(ipfs, json.heads.map(e => e.hash), length, [], 16, timeout, onProgressCallback)
+
     const finalEntries = entries.slice().sort(Entry.compare)
     const heads = entries.filter(e => json.heads.includes(e.hash))
     return {
