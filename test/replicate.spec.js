@@ -30,8 +30,9 @@ const waitForPeers = (ipfs, channel) => {
           clearInterval(interval)
           resolve()
         }
-      } catch (e) {
-        reject(e)
+      } catch(error) {
+        clearInterval(interval)
+        reject(error)
       }
     }, 200)
   })
@@ -82,10 +83,10 @@ apis.forEach((IPFS) => {
     })
 
     after(async () => {
-      if (ipfs1) 
+      if (ipfs1)
         await ipfs1.stop()
 
-      if (ipfs2) 
+      if (ipfs2)
         await ipfs2.stop()
     })
 
@@ -164,7 +165,7 @@ apis.forEach((IPFS) => {
         const timeout = 10000
         await whileProcessingMessages(timeout)
 
-        let result = new Log(ipfs1, 'A', null, null, null, 'peerA')
+        const result = new Log(ipfs1, 'A', null, null, null, 'peerA')
         await result.join(log1)
         await result.join(log2)
 
