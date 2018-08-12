@@ -12,6 +12,7 @@ const _uniques = require('./utils/uniques')
 const ACL = require('./acl')
 const Identity = require('./identity')
 const IdentityProvider = require('./identity-provider')
+const Factories = require('./factories')
 
 const randomId = () => new Date().getTime().toString()
 const getHash = e => e.hash
@@ -161,6 +162,17 @@ class Log extends GSet {
   }
 
   /**
+   * Check whether an object is a Log instance
+   * @param {Object} log An object to check
+   * @returns {true|false}
+   */
+  static isLog (log) {
+    return log.id !== undefined
+      && log.heads !== undefined
+      && log._entryIndex !== undefined
+  }
+
+  /**
    * Find an entry
    * @param {string} [hash] The Multihash of the entry as Base58 encoded string
    * @returns {Entry|undefined}
@@ -247,6 +259,24 @@ class Log extends GSet {
     return entry
   }
 
+  async validate(entries) {
+    // Verify if entries are allowed to be added to the log and throws if
+    // there's an invalid entry
+    const permitted = async (entry) => {
+      const canAppend = await this._acl.canAppend(entry.key, entry)
+      if (!canAppend) throw new Error("Append not permitted")
+    }
+
+    // Verify signature for each entry and throws if there's an invalid signature
+    const verify = async (entry) => {
+      const isValid = await Entry.verify(this._identity, entry)
+      if (!isValid) throw new Error(`Could not validate signature "${entry.sig}" for entry "${entry.hash}" and key "${entry.key}"`)
+    }
+
+    await pMap(entries, permitted, { concurrency: 1 })
+    await pMap(entries, verify, { concurrency: 1 })
+  }
+
   /**
    * Join two logs
    *
@@ -268,23 +298,8 @@ class Log extends GSet {
 
     // Get the difference of the logs
     const newItems = Log.difference(log, this)
-
-    // Verify if entries are allowed to be added to the log and throws if
-    // there's an invalid entry
-    const permitted = async (entry) => {
-      const canAppend = await this._acl.canAppend(entry.key, entry)
-      if (!canAppend) throw new Error("Append not permitted")
-    }
-
-    // Verify signature for each entry and throws if there's an invalid signature
-    const verify = async (entry) => {
-      const isValid = await Entry.verify(this._identity, entry)
-      if (!isValid) throw new Error(`Could not validate signature "${entry.sig}" for entry "${entry.hash}" and key "${entry.key}"`)
-    }
-
     const entriesToJoin = Object.values(newItems)
-    await pMap(entriesToJoin, permitted, { concurrency: 1 })
-    await pMap(entriesToJoin, verify, { concurrency: 1 })
+    await this.validate(entriesToJoin)
 
     // Update the internal entry index
     this._entryIndex = Object.assign(this._entryIndex, newItems)
@@ -371,91 +386,11 @@ class Log extends GSet {
   }
 
   /**
-   * Check whether an object is a Log instance
-   * @param {Object} log An object to check
-   * @returns {true|false}
-   */
-  static isLog (log) {
-    return log.id !== undefined
-      && log.heads !== undefined
-      && log._entryIndex !== undefined
-  }
-
-  /**
    * Get the log's multihash
    * @returns {Promise<string>} Multihash of the Log as Base58 encoded string
    */
   toMultihash () {
     return LogIO.toMultihash(this._storage, this)
-  }
-
-  /**
-   * Create a log from multihash
-   * @param {IPFS}   ipfs        An IPFS instance
-   * @param {string} hash        Multihash (as a Base58 encoded string) to create the log from
-   * @param {Number} [length=-1] How many items to include in the log
-   * @param {Function(hash, entry, parent, depth)} onProgressCallback
-   * @return {Promise<Log>}      New Log
-   */
-  static fromMultihash (ipfs, hash, length = -1, exclude, acl, identity, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
-    if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
-
-    // TODO: need to verify the entries with 'key'
-    // TODO: Change these to use await
-    return LogIO.fromMultihash(ipfs, hash, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, acl, identity))
-  }
-
-  /**
-   * Create a log from a single entry's multihash
-   * @param {IPFS}   ipfs        An IPFS instance
-   * @param {string} hash        Multihash (as a Base58 encoded string) of the Entry from which to create the log from
-   * @param {Number} [length=-1] How many entries to include in the log
-   * @param {Function(hash, entry, parent, depth)} onProgressCallback
-   * @return {Promise<Log>}      New Log
-   */
-  static fromEntryHash (ipfs, hash, id, length = -1, exclude, acl, identity, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
-    if (!isDefined(hash)) throw new Error("'hash' must be defined")
-
-    // TODO: need to verify the entries with 'key'
-    return LogIO.fromEntryHash(ipfs, hash, id, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, id, data.values, null, null, acl, identity))
-  }
-
-  /**
-   * Create a log from a Log Snapshot JSON
-   * @param {IPFS} ipfs          An IPFS instance
-   * @param {Object} json        Log snapshot as JSON object
-   * @param {Number} [length=-1] How many entries to include in the log
-   * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
-   * @return {Promise<Log>}      New Log
-   */
-  static fromJSON (ipfs, json, length = -1, acl, identity, timeout, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
-
-    // TODO: need to verify the entries with 'key'
-    return LogIO.fromJSON(ipfs, json, length, timeout, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, acl, identity))
-  }
-
-  /**
-   * Create a new log from an Entry instance
-   * @param {IPFS}                ipfs          An IPFS instance
-   * @param {Entry|Array<Entry>}  sourceEntries An Entry or an array of entries to fetch a log from
-   * @param {Number}              [length=-1]   How many entries to include. Default: infinite.
-   * @param {Array<Entry|string>} [exclude]     Array of entries or hashes or entries to not fetch (foe eg. cached entries)
-   * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
-   * @return {Promise<Log>}       New Log
-   */
-  static fromEntry (ipfs, sourceEntries, length = -1, exclude, acl, identity, onProgressCallback) {
-    if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
-    if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
-
-    // TODO: need to verify the entries with 'key'
-    return LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, acl, identity))
   }
 
   /**
@@ -573,6 +508,55 @@ class Log extends GSet {
       }
     }
     return res
+  }
+
+  /**
+   * Create a log from multihash
+   * @param {IPFS}   ipfs        An IPFS instance
+   * @param {string} hash        Multihash (as a Base58 encoded string) to create the log from
+   * @param {Number} [length=-1] How many items to include in the log
+   * @param {Function(hash, entry, parent, depth)} onProgressCallback
+   * @return {Promise<Log>}      New Log
+   */
+  static async fromMultihash (ipfs, hash, length = -1, exclude, acl, identity, onProgressCallback) {
+    return Factories.createLogFromMultihash(ipfs, hash, length, exclude, acl, identity, onProgressCallback, Log)
+  }
+
+  /**
+   * Create a log from a single entry's multihash
+   * @param {IPFS}   ipfs        An IPFS instance
+   * @param {string} hash        Multihash (as a Base58 encoded string) of the Entry from which to create the log from
+   * @param {Number} [length=-1] How many entries to include in the log
+   * @param {Function(hash, entry, parent, depth)} onProgressCallback
+   * @return {Promise<Log>}      New Log
+   */
+  static async fromEntryHash (ipfs, hash, id, length = -1, exclude, acl, identity, onProgressCallback) {
+    return Factories.createLogFromEntryHash(ipfs, hash, id, length, exclude, acl, identity, onProgressCallback, Log)
+  }
+
+  /**
+   * Create a log from a Log Snapshot JSON
+   * @param {IPFS} ipfs          An IPFS instance
+   * @param {Object} json        Log snapshot as JSON object
+   * @param {Number} [length=-1] How many entries to include in the log
+   * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
+   * @return {Promise<Log>}      New Log
+   */
+  static async fromJSON (ipfs, json, length = -1, acl, identity, timeout, onProgressCallback) {
+    return Factories.createLogFromJSON(ipfs, json, length, acl, identity, timeout, onProgressCallback, Log)
+  }
+
+  /**
+   * Create a new log from an Entry instance
+   * @param {IPFS}                ipfs          An IPFS instance
+   * @param {Entry|Array<Entry>}  sourceEntries An Entry or an array of entries to fetch a log from
+   * @param {Number}              [length=-1]   How many entries to include. Default: infinite.
+   * @param {Array<Entry|string>} [exclude]     Array of entries or hashes or entries to not fetch (foe eg. cached entries)
+   * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
+   * @return {Promise<Log>}       New Log
+   */
+  static async fromEntry (ipfs, sourceEntries, length = -1, exclude, acl, identity, onProgressCallback) {
+    return Factories.createLogFromEntry(ipfs, sourceEntries, length, exclude, acl, identity, onProgressCallback, Log)
   }
 }
 
