@@ -408,25 +408,25 @@ apis.forEach((IPFS) => {
           assert.equal(res.length, amount)
         })
 
-        it('throws an error if ipfs is not defined', () => {
+        it('throws an error if ipfs is not defined', async () => {
           let err
           try {
-            const log = Log.fromMultihash()
+            const log = await Log.fromMultihash()
           } catch (e) {
             err = e
           }
-          assert.notEqual(err, null)
+          assert.notEqual(err, undefined)
           assert.equal(err.message, 'ImmutableDB instance not defined')
         })
 
-        it('throws an error if hash is not defined', () => {
+        it('throws an error if hash is not defined', async () => {
           let err
           try {
-            const log = Log.fromMultihash(ipfs)
+            const log = await Log.fromMultihash(ipfs)
           } catch (e) {
             err = e
           }
-          assert.notEqual(err, null)
+          assert.notEqual(err, undefined)
           assert.equal(err.message, 'Invalid hash: undefined')
         })
 
