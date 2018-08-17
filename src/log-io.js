@@ -13,14 +13,13 @@ const difference = require('./utils/difference')
 const last = (arr, n) => arr.slice(arr.length - n, arr.length)
 
 class LogIO {
-  static toMultihash (immutabledb, log) {
+  static async toMultihash (immutabledb, log) {
     if (!isDefined(immutabledb)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(log)) throw LogError.LogNotDefinedError()
-
     if (log.values.length < 1) throw new Error(`Can't serialize an empty log`)
-    // return this._storage.put(this.toBuffer())
-    return immutabledb.object.put(log.toBuffer())
-      .then((dagNode) => dagNode.toJSON().multihash)
+
+    const dagNode = await immutabledb.object.put(log.toBuffer())
+    return dagNode.toJSON().multihash
   }
 
   /**
@@ -31,37 +30,36 @@ class LogIO {
    * @param {function(hash, entry, parent, depth)} onProgressCallback
    * @returns {Promise<Log>}
    */
-  static fromMultihash (immutabledb, hash, length = -1, exclude, onProgressCallback) {
+  static async fromMultihash (immutabledb, hash, length = -1, exclude, onProgressCallback) {
     if (!isDefined(immutabledb)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
-    return immutabledb.object.get(hash, { enc: 'base58' })
-      .then((dagNode) => JSON.parse(dagNode.toJSON().data))
-    // return immutabledb.get(hash)
-      .then((logData) => {
-        if (!logData.heads || !logData.id) throw LogError.NotALogError()
-        return EntryIO.fetchAll(immutabledb, logData.heads, length, exclude, null, onProgressCallback)
-          .then((entries) => {
-            // Find latest clock
-            const clock = entries.reduce((clock, entry) => {
-              if (entry.clock.time > clock.time) {
-                return new Clock(entry.clock.id, entry.clock.time)
-              }
-              return clock
-            }, new Clock(logData.id))
-            const finalEntries = entries.slice().sort(Entry.compare)
-            const heads = finalEntries.filter(e => logData.heads.includes(e.hash))
-            return {
-              id: logData.id,
-              values: finalEntries,
-              heads: heads,
-              clock: clock,
-            }
-          })
-      })
+    const dagNode = await immutabledb.object.get(hash, { enc: 'base58' })
+    const logData = JSON.parse(dagNode.toJSON().data)
+    if (!logData.heads || !logData.id) throw LogError.NotALogError()
+
+    const entries = await EntryIO.fetchAll(immutabledb, logData.heads, length, exclude, null, onProgressCallback)
+
+    // Find latest clock
+    const clock = entries.reduce((clock, entry) => {
+      if (entry.clock.time > clock.time) {
+        return new Clock(entry.clock.id, entry.clock.time)
+      }
+      return clock
+    }, new Clock(logData.id))
+
+    const finalEntries = entries.slice().sort(Entry.compare)
+    const heads = finalEntries.filter(e => logData.heads.includes(e.hash))
+
+    return {
+      id: logData.id,
+      values: finalEntries,
+      heads: heads,
+      clock: clock,
+    }
   }
 
-  static fromEntryHash (ipfs, entryHash, id, length = -1, exclude, onProgressCallback) {
+  static async fromEntryHash (ipfs, entryHash, id, length = -1, exclude, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.IpfsNotDefinedError()
     if (!isDefined(entryHash)) throw new Error("'entryHash' must be defined")
 
@@ -71,29 +69,26 @@ class LogIO {
     // Make sure we pass hashes instead of objects to the fetcher function
     const excludeHashes = exclude// ? exclude.map(e => e.hash ? e.hash : e) : exclude
 
-    return EntryIO.fetchParallel(ipfs, [entryHash], length, excludeHashes, null, null, onProgressCallback)
-      .then((entries) => {
-        // Cap the result at the right size by taking the last n entries,
-        // or if given length is -1, then take all
-        const sliced = length > -1 ? last(entries, length) : entries
-        return {
-          values: sliced,
-        }
-      })
+    const entries = await EntryIO.fetchParallel(ipfs, [entryHash], length, excludeHashes, null, null, onProgressCallback)
+    // Cap the result at the right size by taking the last n entries,
+    // or if given length is -1, then take all
+    const sliced = length > -1 ? last(entries, length) : entries
+    return {
+      values: sliced,
+    }
   }
 
-  static fromJSON (ipfs, json, length = -1, key, timeout, onProgressCallback) {
+  static async fromJSON (ipfs, json, length = -1, key, timeout, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
-    return EntryIO.fetchParallel(ipfs, json.heads.map(e => e.hash), length, [], 16, timeout, onProgressCallback)
-      .then((entries) => {
-        const finalEntries = entries.slice().sort(Entry.compare)
-        const heads = entries.filter(e => json.heads.includes(e.hash))
-        return {
-          id: json.id,
-          values: finalEntries,
-          heads: json.heads,
-        }
-      })
+    const headHashes = json.heads.map(e => e.hash)
+    const entries = await EntryIO.fetchParallel(ipfs, headHashes, length, [], 16, timeout, onProgressCallback)
+    const finalEntries = entries.slice().sort(Entry.compare)
+    const heads = entries.filter(e => json.heads.includes(e.hash))
+    return {
+      id: json.id,
+      values: finalEntries,
+      heads: json.heads,
+    }
   }
 
   /**
@@ -105,7 +100,7 @@ class LogIO {
    * @param {function(hash, entry, parent, depth)} [onProgressCallback]
    * @returns {Promise<Log>}
    */
-  static fromEntry (immutabledb, sourceEntries, length = -1, exclude, key, keys, onProgressCallback) {
+  static async fromEntry (immutabledb, sourceEntries, length = -1, exclude, key, keys, onProgressCallback) {
     if (!isDefined(immutabledb)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
@@ -125,31 +120,32 @@ class LogIO {
     const excludeHashes = exclude ? exclude.map(e => e.hash ? e.hash : e) : exclude
     const hashes = sourceEntries.map(e => e.hash)
 
-    return EntryIO.fetchParallel(immutabledb, hashes, length, excludeHashes, null, null, onProgressCallback)
-      .then((entries) => {
-        var combined = sourceEntries.concat(entries)
-        var uniques = _uniques(combined, 'hash').sort(Entry.compare)
+    // Fetch the entries
+    const entries = await EntryIO.fetchParallel(immutabledb, hashes, length, excludeHashes, null, null, onProgressCallback)
 
-        // Cap the result at the right size by taking the last n entries
-        const sliced = uniques.slice(length > -1 ? -length : -uniques.length)
+    // Combine the fetches with the source entries and take only uniques
+    const combined = sourceEntries.concat(entries)
+    const uniques = _uniques(combined, 'hash').sort(Entry.compare)
 
-        // Make sure that the given input entries are present in the result
-        // in order to not lose references
-        const missingSourceEntries = difference(sliced, sourceEntries, 'hash')
+    // Cap the result at the right size by taking the last n entries
+    const sliced = uniques.slice(length > -1 ? -length : -uniques.length)
 
-        const replaceInFront = (a, withEntries) => {
-          var sliced = a.slice(withEntries.length, a.length)
-          return withEntries.concat(sliced)
-        }
+    // Make sure that the given input entries are present in the result
+    // in order to not lose references
+    const missingSourceEntries = difference(sliced, sourceEntries, 'hash')
 
-        // Add the input entries at the beginning of the array and remove
-        // as many elements from the array before inserting the original entries
-        const result = replaceInFront(sliced, missingSourceEntries)
-        return {
-          id: result[result.length - 1].id,
-          values: result,
-        }
-      })
+    const replaceInFront = (a, withEntries) => {
+      var sliced = a.slice(withEntries.length, a.length)
+      return withEntries.concat(sliced)
+    }
+
+    // Add the input entries at the beginning of the array and remove
+    // as many elements from the array before inserting the original entries
+    const result = replaceInFront(sliced, missingSourceEntries)
+    return {
+      id: result[result.length - 1].id,
+      values: result,
+    }
   }
 }
 

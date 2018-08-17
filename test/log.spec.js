@@ -315,11 +315,11 @@ apis.forEach((IPFS) => {
           assert.deepEqual(res.heads, expectedData.heads)
         })
 
-        it('throws an error if log items is empty', () => {
+        it('throws an error if log items is empty', async () => {
           const emptyLog = new Log(ipfs)
           let err
           try {
-            emptyLog.toMultihash()
+            await emptyLog.toMultihash()
           } catch (e) {
             err = e
           }
