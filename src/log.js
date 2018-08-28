@@ -464,7 +464,7 @@ class Log extends GSet {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
 
     // TODO: need to verify the entries with 'key'
-    const data = LogIO.fromJSON(ipfs, json, length, key, timeout, onProgressCallback)
+    const data = await LogIO.fromJSON(ipfs, json, length, key, timeout, onProgressCallback)
     return new Log(ipfs, data.id, data.values, null, null, key, keys)
   }
 
