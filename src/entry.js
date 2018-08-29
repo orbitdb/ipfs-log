@@ -1,7 +1,7 @@
 'use strict'
 
 const Clock = require('./lamport-clock')
-const isDefined = require('./utils/is-defined')
+const { isDefined } = require('./utils')
 
 const IpfsNotDefinedError = () => new Error('Ipfs instance not defined')
 
