@@ -10,8 +10,9 @@
     <script type="text/javascript" src="../../node_modules/ipfs/dist/index.min.js" charset="utf-8"></script>
 
     <script type="text/javascript">
-      const ipfs = new Ipfs({ 
-        repo: './ipfs-log/examples/browser/new/index.js',
+      const dataPath = './ipfs-log/examples/browser/ipfs-0.30.0'
+      const ipfs = new Ipfs({
+        repo: dataPath + '/index.js',
         start: false,
         EXPERIMENTAL: {
           pubsub: true
@@ -19,23 +20,27 @@
       })
 
       ipfs.on('error', (e) => console.error(e))
-      ipfs.on('ready', () => {
+
+      ipfs.on('ready', async () => {
+        const { AccessController, IdentityProvider, Keystore } = Log
+        const keystore = Keystore.create(dataPath + '/keystore')
+        const identitySignerFn = (key, data) => keystore.sign(key, data)
+        const access = new AccessController()
+        const identity = await IdentityProvider.createIdentity(keystore, 'exampleUser', identitySignerFn)
         const outputElm = document.getElementById('output')
 
         // When IPFS is ready, add some log entries
-        let log = new Log(ipfs, 'example')
-        log.append('one')
-          .then((res) => {
-            const values = JSON.stringify(log.values, null, 2)
-            console.log('\n', values)
-            outputElm.innerHTML += values + '<br><br>'
-            return log.append({ two: 'hello' })
-          })
-          .then((res) => {
-            const values = JSON.stringify(log.values, null, 2)
-            console.log('\n', values)
-            outputElm.innerHTML += values + '<br><br>'
-          })
+        let log = new Log(ipfs, access, identity, 'example-log')
+
+        await log.append('one')
+        const values = JSON.stringify(log.values, null, 2)
+        console.log('\n', values)
+        outputElm.innerHTML += values + '<br><br><hr>'
+
+        await log.append({ two: 'hello' })
+        const values2 = JSON.stringify(log.values, null, 2)
+        console.log('\n', values2)
+        outputElm.innerHTML += values2 + '<br><br>'
       })
 
     </script>

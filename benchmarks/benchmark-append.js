@@ -4,6 +4,7 @@ const Log = require('../src/log')
 const IPFS = require('ipfs')
 const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
+const { AccessController, IdentityProvider, Keystore } = Log
 
 // State
 let ipfs
@@ -46,14 +47,18 @@ let run = (() => {
     console.error(err)
   })
 
-  ipfs.on('ready', () => {
+  ipfs.on('ready', async () => {
     // Use memory store to test without disk IO
     // const memstore = new MemStore()
     // ipfs.object.put = memstore.put.bind(memstore)
     // ipfs.object.get = memstore.get.bind(memstore)
+    const testKeysPath = './test/fixtures/keys'
+    const keystore = Keystore.create(testKeysPath)
+    const identitySignerFn = (key, data) => keystore.sign(key, data)
+    const access = new AccessController()
+    const identity = await IdentityProvider.createIdentity(keystore, 'userA', identitySignerFn)
 
-    // Create a log
-    log = new Log(ipfs, 'A')
+    log = new Log(ipfs, access, identity, 'A')
 
     // Output metrics at 1 second interval
     setInterval(() => {

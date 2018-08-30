@@ -4,6 +4,7 @@ const Log = require('../src/log')
 const IPFS = require('ipfs')
 const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
+const { AccessController, IdentityProvider, Keystore } = Log
 
 // State
 let ipfs
@@ -41,7 +42,13 @@ let run = (() => {
 
   ipfs.on('ready', async () => {
     // Create a log
-    log = new Log(ipfs, 'A')
+    const testKeysPath = './test/fixtures/keys'
+    const keystore = Keystore.create(testKeysPath)
+    const identitySignerFn = (key, data) => keystore.sign(key, data)
+    const access = new AccessController()
+    const identity = await IdentityProvider.createIdentity(keystore, 'userA', identitySignerFn)
+
+    log = new Log(ipfs, access, identity, 'A')
 
     const count = parseInt(process.argv[2]) || 50000
     const refCount = 64
@@ -99,8 +106,8 @@ let run = (() => {
       log._id,
       -1,
       [],
-      log._key,
-      log._keys,
+      log._access,
+      log._identity,
       onDataUpdated
     )
 

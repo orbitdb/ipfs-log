@@ -8,8 +8,15 @@
     <h2>Description</h2>
     <div>Add an entry to a log. Measure throughput in operations per second.</div>
     <pre><i>
-    let log = new Log(ipfs, 'id')
-    await log.append(loopCount)
+      const testKeyPath = '../test/fixtures/keys'
+      const keystore = Keystore.create(testKeyPath)
+      const identityProvider = new IdentityProvider(keystore)
+      const identitySignerFn = (key, data) => keystore.sign(key, data)
+      const access = new AccessController()
+      const identity = await IdentityProvider.createIdentity(keystore, 'userA', identitySignerFn)
+
+      log = new Log(ipfs, access, identity, 'browser-benchmark-append-signed')
+      await log.append(loopCount)
     </i></pre>
 
     <h2>Results</h2>
@@ -27,6 +34,7 @@
       let queriesPerSecond = 0
       let lastTenSeconds = 0
 
+      const { AccessController, IdentityProvider, Keystore } = Log
       const queryLoop = () => {
         return log.append(totalQueries.toString())
           .then((res) => {
@@ -51,7 +59,7 @@
 
         ipfs.on('error', (err) => console.error(err))
 
-        ipfs.on('ready', () => {
+        ipfs.on('ready', async () => {
           const outputElm = document.getElementById('output')
           // Output metrics at 1 second interval
           setInterval(() => {
@@ -67,7 +75,14 @@
             queriesPerSecond = 0
           }, 1000)
 
-          log = new Log(ipfs, 'benchmark-append')
+          const testKeyPath = '../test/fixtures/keys'
+          const keystore = Keystore.create(testKeyPath)
+          const identityProvider = new IdentityProvider(keystore)
+          const identitySignerFn = (key, data) => keystore.sign(key, data)
+          const access = new AccessController()
+          const identity = await IdentityProvider.createIdentity(keystore, 'userA', identitySignerFn)
+
+          log = new Log(ipfs, access, identity, 'browser-benchmark-append-signed')
           queryLoop()
         })
 

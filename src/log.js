@@ -8,7 +8,9 @@ const LogError = require('./log-errors')
 const Clock = require('./lamport-clock')
 const isDefined = require('./utils/is-defined')
 const _uniques = require('./utils/uniques')
-
+const AccessController = require('./default-access-controller')
+const IdentityProvider = require('orbit-db-identity-provider')
+const Keystore = require('orbit-db-keystore')
 const randomId = () => new Date().getTime().toString()
 const getHash = e => e.hash
 const flatMap = (res, acc) => res.concat(acc)
@@ -32,16 +34,26 @@ const uniqueEntriesReducer = (res, acc) => {
 class Log extends GSet {
   /**
    * Create a new Log instance
-   * @param  {IPFS}           ipfs    An IPFS instance
-   * @param  {String}         id      ID of the log
-   * @param  {[Array<Entry>]} entries An Array of Entries from which to create the log from
-   * @param  {[Array<Entry>]} heads   Set the heads of the log
-   * @param  {[Clock]}        clock   Set the clock of the log
-   * @return {Log}            Log
+   * @param  {IPFS}           [ipfs]          An IPFS instance
+   * @param  {Object}         [access]           ACL following an interface that provides functions for checking permissions
+   * @param  {Object}         [identity]      Identity following an interface that provides functions for verifying entries signature and signing entries
+   * @param  {String}         [logId]            ID of the log
+   * @param  {Array<Entry>}   [entries]       An Array of Entries from which to create the log
+   * @param  {Array<Entry>}   [heads]         Set the heads of the log
+   * @param  {Clock}          [clock]         Set the clock of the log
+   * @return {Log}                            Log
    */
-  constructor (ipfs, id, entries, heads, clock, key, keys = []) {
+  constructor (ipfs, access, identity, logId, entries, heads, clock) {
     if (!isDefined(ipfs)) {
       throw LogError.ImmutableDBNotDefinedError()
+    }
+
+    if (!isDefined(access)) {
+      throw new Error('Access controller is required')
+    }
+
+    if (!isDefined(identity)) {
+      throw new Error('Identity is required')
     }
 
     if (isDefined(entries) && !Array.isArray(entries)) {
@@ -55,12 +67,12 @@ class Log extends GSet {
     super()
 
     this._storage = ipfs
-    this._id = id || randomId()
+    this._id = logId || randomId()
 
-    // Signing related setup
-    this._keystore = this._storage.keystore
-    this._key = key
-    this._keys = Array.isArray(keys) ? keys : [keys]
+    // ACL
+    this._access = access
+    // Identity
+    this._identity = identity
 
     // Add entries to the internal cache
     entries = entries || []
@@ -83,8 +95,8 @@ class Log extends GSet {
     // Take the given key as the clock id is it's a Key instance,
     // otherwise if key was given, take whatever it is,
     // and if it was null, take the given id as the clock id
-    const clockId = (key && key.getPublic) ? key.getPublic('hex') : (key || this._id)
-    this._clock = new Clock(clockId, maxTime)
+    // const clockId = this._identity ? this._identity.publicKey : this._id
+    this._clock = new Clock(this._identity.publicKey, maxTime)
   }
 
   /**
@@ -199,20 +211,29 @@ class Log extends GSet {
    * @return {Log}   New Log containing the appended value
    */
   async append (data, pointerCount = 1) {
-    // Verify that we're allowed to append
-    if ((this._key && this._key.getPublic) &&
-        !this._keys.includes(this._key.getPublic('hex')) &&
-        !this._keys.includes('*')) {
-      throw new Error('Not allowed to write')
-    }
-
     // Update the clock (find the latest clock)
     const newTime = Math.max(this.clock.time, this.heads.reduce(maxClockTimeReducer, 0)) + 1
     this._clock = new Clock(this.clock.id, newTime)
+
     // Get the required amount of hashes to next entries (as per current state of the log)
     const nexts = Object.keys(this.traverse(this.heads, pointerCount))
+
+    // @TODO: Split Entry.create into creating object, checking permission, signing and then posting to IPFS
     // Create the entry and add it to the internal cache
-    const entry = await Entry.create(this._storage, this._keystore, this.id, data, nexts, this.clock, this._key)
+    const entry = await Entry.create(
+      this._storage,
+      this._identity,
+      this.id,
+      data,
+      nexts,
+      this.clock
+    )
+
+    const canAppend = await this._access.canAppend(entry, this._identity.provider)
+    if (!canAppend) {
+      throw new Error(`Could not append entry, key "${this._identity.id}" is not allowed to write to the log`)
+    }
+
     this._entryIndex[entry.hash] = entry
     nexts.forEach(e => (this._nextsIndex[e] = entry.hash))
     this._headsIndex = {}
@@ -241,78 +262,27 @@ class Log extends GSet {
     if (!isDefined(log)) throw LogError.LogNotDefinedError()
     if (!Log.isLog(log)) throw LogError.NotALogError()
 
-    // Verify the entries
-    // TODO: move to Entry
-    const verifyEntries = async (entries) => {
-      const isTrue = e => e === true
-      const checkAllKeys = (keys, entry) => {
-        const keyMatches = e => e === entry.key
-        return keys.find(keyMatches)
-      }
+    // Get the difference of the logs
+    const newItems = Log.difference(log, this)
 
-      const verify = async (entry) => {
-        if (!entry.key) throw new Error("Entry doesn't have a public key")
-        if (!entry.sig) throw new Error("Entry doesn't have a signature")
-
-        if (this._keys.length === 1 && this._keys[0] === this._key) {
-          if (entry.id !== this.id) {
-            throw new Error("Entry doesn't belong in this log (wrong ID)")
-          }
-        }
-
-        if (this._keys.length > 0 &&
-            !this._keys.includes('*') &&
-            !checkAllKeys(this._keys.concat([this._key]), entry)) {
-          console.warn("Warning: Input log contains entries that are not allowed in this log. Logs weren't joined.")
-          return false
-        }
-
-        try {
-          return await Entry.verifyEntry(entry, this._keystore)
-        } catch (e) {
-          throw new Error(`Invalid signature in entry '${entry.hash}'`)
-        }
-      }
-
-      const checked = await pMap(entries, verify)
-      return checked.every(isTrue)
+    const identityProvider = this._identity.provider
+    // Verify if entries are allowed to be added to the log and throws if
+    // there's an invalid entry
+    const permitted = async (entry) => {
+      const canAppend = await this._access.canAppend(entry, identityProvider)
+      if (!canAppend) throw new Error('Append not permitted')
     }
 
-    const difference = (log, exclude) => {
-      let stack = Object.keys(log._headsIndex)
-      let traversed = {}
-      let res = {}
-
-      const pushToStack = hash => {
-        if (!traversed[hash] && !exclude.get(hash)) {
-          stack.push(hash)
-          traversed[hash] = true
-        }
-      }
-
-      while (stack.length > 0) {
-        const hash = stack.shift()
-        const entry = log.get(hash)
-        if (entry && !exclude.get(hash) && entry.id === this.id) {
-          res[entry.hash] = entry
-          traversed[entry.hash] = true
-          entry.next.forEach(pushToStack)
-        }
-      }
-      return res
+    // Verify signature for each entry and throws if there's an invalid signature
+    const verify = async (entry) => {
+      const isValid = await Entry.verify(identityProvider, entry)
+      const publicKey = entry.identity ? entry.identity.publicKey : entry.key
+      if (!isValid) throw new Error(`Could not validate signature "${entry.sig}" for entry "${entry.hash}" and key "${publicKey}"`)
     }
 
-    // Merge the entries
-    const newItems = difference(log, this)
-
-    // if a key was given, verify the entries from the incoming log
-    if (this._key && this._key.getPublic) {
-      const canJoin = await verifyEntries(Object.values(newItems))
-      // Return early if any of the given entries didn't verify
-      if (!canJoin) {
-        return this
-      }
-    }
+    const entriesToJoin = Object.values(newItems)
+    await pMap(entriesToJoin, permitted, { concurrency: 1 })
+    await pMap(entriesToJoin, verify, { concurrency: 1 })
 
     // Update the internal entry index
     this._entryIndex = Object.assign(this._entryIndex, newItems)
@@ -425,13 +395,14 @@ class Log extends GSet {
    * @param {Function(hash, entry, parent, depth)} onProgressCallback
    * @return {Promise<Log>}      New Log
    */
-  static fromMultihash (ipfs, hash, length = -1, exclude, key, onProgressCallback) {
+  static fromMultihash (ipfs, access, identity, hash, length = -1, exclude, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
     // TODO: need to verify the entries with 'key'
+    // TODO: Change these to use await
     return LogIO.fromMultihash(ipfs, hash, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, data.heads, data.clock, key))
+      .then((data) => new Log(ipfs, access, identity, data.id, data.values, data.heads, data.clock))
   }
 
   /**
@@ -442,13 +413,13 @@ class Log extends GSet {
    * @param {Function(hash, entry, parent, depth)} onProgressCallback
    * @return {Promise<Log>}      New Log
    */
-  static fromEntryHash (ipfs, hash, id, length = -1, exclude, key, keys, onProgressCallback) {
+  static fromEntryHash (ipfs, access, identity, hash, id, length = -1, exclude, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(hash)) throw new Error("'hash' must be defined")
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntryHash(ipfs, hash, id, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, id, data.values, null, null, key, keys))
+      .then((data) => new Log(ipfs, access, identity, id, data.values))
   }
 
   /**
@@ -459,12 +430,12 @@ class Log extends GSet {
    * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
    * @return {Promise<Log>}      New Log
    */
-  static fromJSON (ipfs, json, length = -1, key, keys, timeout, onProgressCallback) {
+  static fromJSON (ipfs, access, identity, json, length = -1, timeout, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
 
     // TODO: need to verify the entries with 'key'
-    return LogIO.fromJSON(ipfs, json, length, key, timeout, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values, null, null, key, keys))
+    return LogIO.fromJSON(ipfs, json, length, timeout, onProgressCallback)
+      .then((data) => new Log(ipfs, access, identity, data.id, data.values))
   }
 
   /**
@@ -476,13 +447,13 @@ class Log extends GSet {
    * @param {Function(hash, entry, parent, depth)} [onProgressCallback]
    * @return {Promise<Log>}       New Log
    */
-  static fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback) {
+  static fromEntry (ipfs, access, identity, sourceEntries, length = -1, exclude, onProgressCallback) {
     if (!isDefined(ipfs)) throw LogError.ImmutableDBNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
     // TODO: need to verify the entries with 'key'
     return LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)
-      .then((data) => new Log(ipfs, data.id, data.values))
+      .then((data) => new Log(ipfs, access, identity, data.id, data.values))
   }
 
   /**
@@ -576,6 +547,33 @@ class Log extends GSet {
     entries.forEach(addToIndex)
     return entries.reduce(reduceTailHashes, [])
   }
+
+  static difference (a, b) {
+    let stack = Object.keys(a._headsIndex)
+    let traversed = {}
+    let res = {}
+
+    const pushToStack = hash => {
+      if (!traversed[hash] && !b.get(hash)) {
+        stack.push(hash)
+        traversed[hash] = true
+      }
+    }
+
+    while (stack.length > 0) {
+      const hash = stack.shift()
+      const entry = a.get(hash)
+      if (entry && !b.get(hash) && entry.id === b.id) {
+        res[entry.hash] = entry
+        traversed[entry.hash] = true
+        entry.next.forEach(pushToStack)
+      }
+    }
+    return res
+  }
 }
 
 module.exports = Log
+module.exports.AccessController = AccessController
+module.exports.IdentityProvider = IdentityProvider
+module.exports.Keystore = Keystore

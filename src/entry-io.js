@@ -37,6 +37,7 @@ class EntryIO {
     const addToLoadingQueue = e => loadingQueue.push(e)
 
     // Add entries that we don't need to fetch to the "cache"
+    exclude = exclude && Array.isArray(exclude) ? exclude : []
     var addToExcludeCache = e => (cache[e.hash] = e)
     exclude.forEach(addToExcludeCache)
 
