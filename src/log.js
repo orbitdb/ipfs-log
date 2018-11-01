@@ -6,6 +6,7 @@ const Entry = require('./entry')
 const LogIO = require('./log-io')
 const LogError = require('./log-errors')
 const Clock = require('./lamport-clock')
+const { LastWriteWins } = require('./log-sorting')
 const AccessController = require('./default-access-controller')
 const IdentityProvider = require('orbit-db-identity-provider')
 const { isDefined, findUniques } = require('./utils')
@@ -126,7 +127,8 @@ class Log extends GSet {
    * @returns {Array<Entry>}
    */
   get values () {
-    return Object.values(this._entryIndex).sort(Entry.compare) || []
+    // Sort entries as "Last-Write-Wins", ie. by their clock time
+    return Object.values(this._entryIndex).sort(LastWriteWins)
   }
 
   /**
