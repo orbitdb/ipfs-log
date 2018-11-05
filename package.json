@@ -36,6 +36,7 @@
     "ipfs": "~0.31.4",
     "ipfs-repo": "~0.23.1",
     "ipfsd-ctl": "~0.39.1",
+    "is-node": "^1.0.2",
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
     "orbit-db-keystore": "github:orbitdb/orbit-db-keystore#fix/verification",
