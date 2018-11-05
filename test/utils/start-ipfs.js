@@ -3,6 +3,7 @@
 const IPFSFactory = require('ipfsd-ctl')
 const DatastoreLevel = require('datastore-level')
 const IPFSRepo = require('ipfs-repo')
+const isNode = require('is-node')
 const testAPIs = require('./test-apis')
 
 const repoConf = {
@@ -25,7 +26,10 @@ const startIpfs = (type, config = {}) => {
     // Use custom storage backend for IPFS block store
     // NOTE: need to duck-type 'repoPath' instead of 'repo' as ipfsd-ctl
     // flips the two, so passing 'repo' doesn't work as it does with js-ipfs
-    config = Object.assign({}, config, { repoPath: new IPFSRepo(config.repo, repoConf) })
+    if (isNode) {
+      // Use DatastoreLevel only in Nodejs environment
+      config = Object.assign({}, config, { repoPath: new IPFSRepo(config.repo, repoConf) })
+    }
 
     // If we're starting a process, pass command line arguments to it
     if (!config.args) {
@@ -37,7 +41,7 @@ const startIpfs = (type, config = {}) => {
       .create(testAPIs[type])
       .spawn(config, async (err, ipfsd) => {
         if (err) {
-          reject(err)
+          return reject(err)
         }
         resolve(ipfsd.api)
       })
