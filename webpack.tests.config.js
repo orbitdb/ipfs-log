@@ -1,5 +1,6 @@
 'use strict'
 
+const glob = require('glob');
 const webpack = require('webpack')
 const Uglify = require('uglifyjs-webpack-plugin')
 const path = require('path')
@@ -13,7 +14,7 @@ const uglifyOptions = {
 
 module.exports = {
   // TODO: put all tests in a .js file that webpack can use as entry point
-  entry: './test/log.spec.js',
+  entry: glob.sync('./test/*.spec.js'),
   output: {
     filename: './test/browser/bundle.js'
   },
