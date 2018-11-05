@@ -21,7 +21,7 @@ const {
 let ipfs, testIdentity, testIdentity2, testIdentity3
 
 Object.keys(testAPIs).forEach((IPFS) => {
-  describe.only('Log (' + IPFS + ')', function () {
+  describe('Log (' + IPFS + ')', function () {
     this.timeout(config.timeout)
 
     const testACL = new AccessController()
