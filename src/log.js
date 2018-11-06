@@ -326,7 +326,10 @@ class Log extends GSet {
   toJSON () {
     return {
       id: this.id,
-      heads: this.heads.map(getHash)
+      heads: this.heads
+        .sort(LastWriteWins) // default sorting
+        .reverse() // we want the latest as the first element
+        .map(getHash) // return only the head hashes
     }
   }
 
