@@ -2,7 +2,6 @@
 
 const assert = require('assert')
 const rmrf = require('rimraf')
-const isNode = require('is-node')
 const Keystore = require('orbit-db-keystore')
 const Clock = require('../src/lamport-clock')
 const Entry = require('../src/entry')
@@ -26,17 +25,6 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     const testACL = new AccessController()
     const keystore = Keystore.create(config.testKeysPath)
-
-    // If in browser, put the fixture keys in local storage
-    // so that Keystore can find them
-    if (!isNode) {
-      const keyA = require('./fixtures/keys/userA')
-      const keyB = require('./fixtures/keys/userB')
-      const keyC = require('./fixtures/keys/userC')
-      localStorage.setItem('userA', JSON.stringify(keyA))
-      localStorage.setItem('userB', JSON.stringify(keyB))
-      localStorage.setItem('userC', JSON.stringify(keyC))
-    }
 
     const identitySignerFn = async (id, data) => {
       const key = await keystore.getKey(id)

@@ -40,10 +40,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     before(async () => {
       rmrf.sync(ipfsConfig.repo)
-      testIdentity = await IdentityProvider.createIdentity(keystore, 'userA', identitySignerFn)
-      testIdentity2 = await IdentityProvider.createIdentity(keystore, 'userB', identitySignerFn)
-      testIdentity3 = await IdentityProvider.createIdentity(keystore, 'userC', identitySignerFn)
-      testIdentity4 = await IdentityProvider.createIdentity(keystore, 'userD', identitySignerFn)
+      testIdentity = await IdentityProvider.createIdentity(keystore, 'userA', {identitySignerFn})
+      testIdentity2 = await IdentityProvider.createIdentity(keystore, 'userB', {identitySignerFn})
+      testIdentity3 = await IdentityProvider.createIdentity(keystore, 'userC', {identitySignerFn})
+      testIdentity4 = await IdentityProvider.createIdentity(keystore, 'userD', {identitySignerFn})
       ipfs = await startIpfs(IPFS, ipfsConfig)
 
       const memstore = new MemStore()
