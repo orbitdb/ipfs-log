@@ -57,12 +57,15 @@ class LogIO {
     if (!isDefined(ipfs)) throw LogError.IpfsNotDefinedError()
     if (!isDefined(entryHash)) throw new Error("'entryHash' must be defined")
 
+    // Convert input hash(es) to an array
+    const entryHashes = Array.isArray(entryHash) ? entryHash : [entryHash]
+
     // Fetch given length, return size at least the given input entries
     length = length > -1 ? Math.max(length, 1) : length
 
     // Make sure we pass hashes instead of objects to the fetcher function
     const excludeHashes = exclude// ? exclude.map(e => e.hash ? e.hash : e) : exclude
-    const entries = await EntryIO.fetchParallel(ipfs, [entryHash], length, excludeHashes, null, null, onProgressCallback)
+    const entries = await EntryIO.fetchParallel(ipfs, entryHashes, length, excludeHashes, null, null, onProgressCallback)
     // Cap the result at the right size by taking the last n entries,
     // or if given length is -1, then take all
     const sliced = length > -1 ? last(entries, length) : entries
