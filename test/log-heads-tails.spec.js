@@ -37,10 +37,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     before(async () => {
       rmrf.sync(ipfsConfig.repo)
-      testIdentity = await IdentityProvider.createIdentity(keystore, 'userA', identitySignerFn)
-      testIdentity2 = await IdentityProvider.createIdentity(keystore, 'userB', identitySignerFn)
-      testIdentity3 = await IdentityProvider.createIdentity(keystore, 'userC', identitySignerFn)
-      testIdentity4 = await IdentityProvider.createIdentity(keystore, 'userD', identitySignerFn)
+      testIdentity = await IdentityProvider.createIdentity(keystore, 'userA', {identitySignerFn})
+      testIdentity2 = await IdentityProvider.createIdentity(keystore, 'userB', {identitySignerFn})
+      testIdentity3 = await IdentityProvider.createIdentity(keystore, 'userC', {identitySignerFn})
+      testIdentity4 = await IdentityProvider.createIdentity(keystore, 'userD', {identitySignerFn})
       ipfs = await startIpfs(IPFS, ipfsConfig)
     })
 
@@ -234,7 +234,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
       it('returns tails after loading a partial log', async () => {
         let log1 = new Log(ipfs, testACL, testIdentity, 'A')
-        let log2 = new Log(ipfs, testACL, testIdentity, 'A')
+        let log2 = new Log(ipfs, testACL, testIdentity2, 'A')
         await log1.append('helloA1')
         await log1.append('helloA2')
         await log2.append('helloB1')
@@ -243,8 +243,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
         const log4 = await Log.fromEntry(ipfs, testACL, testIdentity, log1.heads, 2)
         assert.strictEqual(log4.length, 2)
         assert.strictEqual(log4.tails.length, 2)
-        assert.strictEqual(log4.tails[0].hash, log4.values[1].hash)
-        assert.strictEqual(log4.tails[1].hash, log4.values[0].hash)
+        assert.strictEqual(log4.tails[0].hash, log4.values[0].hash)
+        assert.strictEqual(log4.tails[1].hash, log4.values[1].hash)
       })
 
       it('returns tails sorted by id', async () => {
