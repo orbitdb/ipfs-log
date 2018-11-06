@@ -5,6 +5,8 @@ const waitForPeers = (ipfs, peersToWait, topic) => {
     const interval = setInterval(async () => {
       try {
         const peers = await ipfs.pubsub.peers(topic)
+        // peers are not connecting, dunno why
+        console.log(peers)
         const hasAllPeers = peersToWait.map((e) => peers.includes(e)).filter((e) => e === false).length === 0
         if (hasAllPeers) {
           console.log('Found peers!')
