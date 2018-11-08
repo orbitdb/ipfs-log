@@ -2,7 +2,7 @@
 
 const isNode = require('is-node')
 
-// This file will be picked up by webpack into the 
+// This file will be picked up by webpack into the
 // tests bundle and the code here gets run when imported
 // into the browser tests index through browser/run.js
 if (!isNode) {
@@ -12,6 +12,8 @@ if (!isNode) {
   const keyB = require('./fixtures/keys/userB')
   const keyC = require('./fixtures/keys/userC')
   const keyD = require('./fixtures/keys/userD')
+
+  /* global localStorage */
   localStorage.setItem('userA', JSON.stringify(keyA))
   localStorage.setItem('userB', JSON.stringify(keyB))
   localStorage.setItem('userC', JSON.stringify(keyC))
