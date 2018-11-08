@@ -19,7 +19,7 @@ module.exports = {
     filename: './test/browser/bundle.js'
   },
   target: 'web',
-  devtool: 'none',
+  devtool: 'source-map',
   node: {
     console: false,
     process: 'mock',
