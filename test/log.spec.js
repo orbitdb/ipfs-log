@@ -8,7 +8,6 @@ const Entry = require('../src/entry')
 const Log = require('../src/log')
 const { AccessController, IdentityProvider } = Log
 
-
 // Test utils
 const {
   config,
@@ -36,9 +35,9 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     before(async () => {
       rmrf.sync(ipfsConfig.repo)
-      testIdentity = await IdentityProvider.createIdentity(keystore, 'userA', {identitySignerFn})
-      testIdentity2 = await IdentityProvider.createIdentity(keystore, 'userB', {identitySignerFn})
-      testIdentity3 = await IdentityProvider.createIdentity(keystore, 'userC', {identitySignerFn})
+      testIdentity = await IdentityProvider.createIdentity(keystore, 'userA', { identitySignerFn })
+      testIdentity2 = await IdentityProvider.createIdentity(keystore, 'userB', { identitySignerFn })
+      testIdentity3 = await IdentityProvider.createIdentity(keystore, 'userC', { identitySignerFn })
       ipfs = await startIpfs(IPFS, ipfsConfig)
     })
 
