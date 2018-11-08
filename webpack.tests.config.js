@@ -14,7 +14,7 @@ const uglifyOptions = {
 
 module.exports = {
   // TODO: put all tests in a .js file that webpack can use as entry point
-  entry: glob.sync('./test/*.spec.js'),
+  entry: glob.sync('./test/*.spec.js', { "ignore": ['./test/replicate.spec.js'] }),
   output: {
     filename: './test/browser/bundle.js'
   },
