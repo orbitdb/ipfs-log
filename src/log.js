@@ -287,12 +287,12 @@ class Log extends GSet {
     // Update the internal entry index
     this._entryIndex = Object.assign(this._entryIndex, newItems)
 
+    // Update the length cache
+    this._length = Object.keys(this._entryIndex).length;
+
     // Update the internal next pointers index
     const addToNextsIndex = e => e.next.forEach(a => (this._nextsIndex[a] = e.hash))
     Object.values(newItems).forEach(addToNextsIndex)
-
-    // Update the length
-    this._length += Object.values(newItems).length
 
     // Slice to the requested size
     if (size > -1) {
