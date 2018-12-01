@@ -288,7 +288,7 @@ class Log extends GSet {
     this._entryIndex = Object.assign(this._entryIndex, newItems)
 
     // Update the length cache
-    this._length = Object.keys(this._entryIndex).length;
+    this._length = Object.keys(this._entryIndex).length
 
     // Update the internal next pointers index
     const addToNextsIndex = e => e.next.forEach(a => (this._nextsIndex[a] = e.hash))
