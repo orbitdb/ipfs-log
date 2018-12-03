@@ -128,7 +128,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
           err = e
         }
         assert.notStrictEqual(err, undefined)
-        assert.strictEqual(err.message, `'entries' argument must be an array of Entry instances`)
+        assert.strictEqual(err.message, `'entries' argument must be a Set of Entry instances`)
       })
 
       it('throws an error if heads is not an array', () => {

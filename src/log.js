@@ -56,8 +56,14 @@ class Log extends GSet {
       throw new Error('Identity is required')
     }
 
-    if (isDefined(entries) && !Array.isArray(entries)) {
-      throw new Error(`'entries' argument must be an array of Entry instances`)
+    // Backwards compatibility
+    if(Array.isArray(entries)) {
+      entries = new Set(entries)
+      console.warn("Passing an array of entries to new Log will soon be deprecated. Use Set instead")
+    }
+
+    if (isDefined(entries) && !(entries instanceof Set)) {
+      throw new Error(`'entries' argument must be a Set of Entry instances`)
     }
 
     if (isDefined(heads) && !Array.isArray(heads)) {
@@ -75,12 +81,14 @@ class Log extends GSet {
     this._identity = identity
 
     // Add entries to the internal cache
-    entries = entries || []
-    this._entryIndex = entries.reduce(uniqueEntriesReducer, {})
+    entries = entries || new Set()
+    // TODO: fix reduce function
+    this._entryIndex = [...entries].reduce(uniqueEntriesReducer, {})
 
     // Set heads if not passed as an argument
+    // TODO: fix findHeads function
     heads = heads || Log.findHeads(entries)
-    this._headsIndex = heads.reduce(uniqueEntriesReducer, {})
+    this._headsIndex = [...heads].reduce(uniqueEntriesReducer, {})
 
     // Index of all next pointers in this log
     this._nextsIndex = {}
@@ -88,7 +96,8 @@ class Log extends GSet {
     entries.forEach(addToNextsIndex)
 
     // Set the length, we calculate the length manually internally
-    this._length = entries ? entries.length : 0
+    // TODO; how to calculate this?
+    this._length = entries ? [...entries].length : 0
 
     // Set the clock
     const maxTime = Math.max(clock ? clock.time : 0, this.heads.reduce(maxClockTimeReducer, 0))
@@ -263,6 +272,7 @@ class Log extends GSet {
     if (!Log.isLog(log)) throw LogError.NotALogError()
 
     // Get the difference of the logs
+    // TODO: This is a set of entries
     const newItems = Log.difference(log, this)
 
     const identityProvider = this._identity.provider
@@ -280,6 +290,7 @@ class Log extends GSet {
       if (!isValid) throw new Error(`Could not validate signature "${entry.sig}" for entry "${entry.hash}" and key "${publicKey}"`)
     }
 
+    // TODO: More entries stuff here
     const entriesToJoin = Object.values(newItems)
     await pMap(entriesToJoin, permitted, { concurrency: 1 })
     await pMap(entriesToJoin, verify, { concurrency: 1 })
@@ -306,7 +317,8 @@ class Log extends GSet {
     const notReferencedByNewItems = e => !nextsFromNewItems.find(a => a === e.hash)
     const notInCurrentNexts = e => !this._nextsIndex[e.hash]
     const nextsFromNewItems = Object.values(newItems).map(getNextPointers).reduce(flatMap, [])
-    const mergedHeads = Log.findHeads(Object.values(Object.assign({}, this._headsIndex, log._headsIndex)))
+    const mergedHeadsSet = Log.findHeads(Object.values(Object.assign({}, this._headsIndex, log._headsIndex)))
+    const mergedHeads = [...mergedHeadsSet]
       .filter(notReferencedByNewItems)
       .filter(notInCurrentNexts)
       .reduce(uniqueEntriesReducer, {})
@@ -403,6 +415,7 @@ class Log extends GSet {
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
     // TODO: need to verify the entries with 'key'
+    // TODO: entries as set
     const data = await LogIO.fromMultihash(ipfs, hash, length, exclude, onProgressCallback)
     return new Log(ipfs, access, identity, data.id, data.values, data.heads, data.clock)
   }
@@ -420,6 +433,7 @@ class Log extends GSet {
     if (!isDefined(hash)) throw new Error("'hash' must be defined")
 
     // TODO: need to verify the entries with 'key'
+    // TODO: entries as set
     const data = await LogIO.fromEntryHash(ipfs, hash, id, length, exclude, onProgressCallback)
     return new Log(ipfs, access, identity, id, data.values)
   }
@@ -436,6 +450,7 @@ class Log extends GSet {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
 
     // TODO: need to verify the entries with 'key'
+    // TODO: entries as set
     const data = await LogIO.fromJSON(ipfs, json, length, timeout, onProgressCallback)
     return new Log(ipfs, access, identity, data.id, data.values)
   }
@@ -454,6 +469,7 @@ class Log extends GSet {
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
     // TODO: need to verify the entries with 'key'
+    // TODO: Entries as set
     const data = await LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)
     return new Log(ipfs, access, identity, data.id, data.values)
   }
@@ -468,6 +484,7 @@ class Log extends GSet {
    * @param {Array<Entry>} Entries to search heads from
    * @returns {Array<Entry>}
    */
+  //TODO Entries as seet
   static findHeads (entries) {
     var indexReducer = (res, entry, idx, arr) => {
       var addToResult = e => (res[e] = entry.hash)
@@ -475,16 +492,17 @@ class Log extends GSet {
       return res
     }
 
-    var items = entries.reduce(indexReducer, {})
+    var items = [...entries].reduce(indexReducer, {})
 
     var exists = e => items[e.hash] === undefined
     var compareIds = (a, b) => a.clock.id > b.clock.id
 
-    return entries.filter(exists).sort(compareIds)
+    return new Set([...entries].filter(exists).sort(compareIds))
   }
 
   // Find entries that point to another entry that is not in the
-  // input array
+  // input arrayA
+  // TODO: Entries as set
   static findTails (entries) {
     // Reverse index { next -> entry }
     var reverseIndex = {}
@@ -516,6 +534,7 @@ class Log extends GSet {
     // Create our indices
     entries.forEach(addToIndex)
 
+    // TODO: Entries as set
     var addUniques = (res, entries, idx, arr) => res.concat(findUniques(entries, 'hash'))
     var exists = e => hashes[e] === undefined
     var findFromReverseIndex = e => reverseIndex[e]
@@ -532,6 +551,7 @@ class Log extends GSet {
 
   // Find the hashes to entries that are not in a collection
   // but referenced by other entries
+  // TODO: Entries as set
   static findTailHashes (entries) {
     var hashes = {}
     var addToIndex = e => (hashes[e.hash] = true)
