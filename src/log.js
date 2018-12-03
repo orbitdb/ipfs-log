@@ -57,9 +57,9 @@ class Log extends GSet {
     }
 
     // Backwards compatibility
-    if(Array.isArray(entries)) {
+    if (Array.isArray(entries)) {
       entries = new Set(entries)
-      console.warn("Passing an array of entries to new Log will soon be deprecated. Use Set instead")
+      console.warn('Passing an array of entries to new Log will soon be deprecated. Use Set instead')
     }
 
     if (isDefined(entries) && !(entries instanceof Set)) {
@@ -484,7 +484,7 @@ class Log extends GSet {
    * @param {Array<Entry>} Entries to search heads from
    * @returns {Array<Entry>}
    */
-  //TODO Entries as seet
+  // TODO Entries as seet
   static findHeads (entries) {
     var indexReducer = (res, entry, idx, arr) => {
       var addToResult = e => (res[e] = entry.hash)
