@@ -36,14 +36,15 @@ class Log extends GSet {
    * @param {IPFS} ipfs An IPFS instance
    * @param {Object} access AccessController (./default-access-controller)
    * @param {Object} identity Identity (https://github.com/orbitdb/orbit-db-identity-provider/blob/master/src/identity.js)
-   * @param {Array<Entry>} [entries] An Array of Entries from which to create the log
-   * @param {string} [logId] ID of the log
-   * @param {Array<Entry>} [heads] Set the heads of the log
-   * @param {Clock} [clock] Set the clock of the log
-   * @param {Function} [sortFn] The sort function - by default LastWriteWins
+   * @param {Object} options
+   * @param {string} options.logId ID of the log
+   * @param {Array<Entry>} options.entries An Array of Entries from which to create the log
+   * @param {Array<Entry>} options.heads Set the heads of the log
+   * @param {Clock} options.clock Set the clock of the log
+   * @param {Function} options.sortFn The sort function - by default LastWriteWins
    * @return {Log} The log instance
    */
-  constructor (ipfs, access, identity, logId, entries, heads, clock, sortFn) {
+  constructor (ipfs, access, identity, { logId, entries, heads, clock, sortFn } = {}) {
     if (!isDefined(ipfs)) {
       throw LogError.IPFSNotDefinedError()
     }
@@ -438,16 +439,25 @@ class Log extends GSet {
    * @param {AccessController} access The access controller instance
    * @param {Identity} identity The identity instance
    * @param {string} cid The log CID
-   * @param {number} [length=-1] How many items to include in the log
-   * @param {Array<Entry>} [exclude] Entries to not fetch (cached)
-   * @param {function(cid, entry, parent, depth)} onProgressCallback
+   * @param {Object} options
+   * @param {number} options.length How many items to include in the log
+   * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
+   * @param {Function} options.sortFn The sort function - by default LastWriteWins
    * @returns {Promise<Log>}
    * @deprecated
    */
-  static async fromCID (ipfs, access, identity, cid, length = -1, exclude, onProgressCallback) {
+  static async fromCID (ipfs, access, identity, cid,
+    { length = -1, exclude, onProgressCallback, sortFn } = {}) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromCID(ipfs, cid, length, exclude, onProgressCallback)
-    return new Log(ipfs, access, identity, data.id, data.values, data.heads, data.clock)
+    const data = await LogIO.fromCID(ipfs, cid, { length, exclude, onProgressCallback })
+    return new Log(ipfs, access, identity, {
+      logId: data.id,
+      entries: data.values,
+      heads: data.heads,
+      clock: data.clock,
+      sortFn: sortFn
+    })
   }
 
   /**
@@ -456,14 +466,18 @@ class Log extends GSet {
     * @param {AccessController} access The access controller instance
     * @param {Identity} identity The identity instance
     * @param {string} multihash Multihash (as a Base58 encoded string) to create the Log from
-    * @param {number} [length=-1] How many items to include in the log
-    * @param {Array<Entry>} [exclude] Entries to not fetch (cached)
-    * @param {function(cid, entry, parent, depth)} onProgressCallback
+    * @param {Object} options
+    * @param {number} options.length How many items to include in the log
+    * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+    * @param {function(cid, entry, parent, depth)} options.onProgressCallback
+    * @param {Function} options.sortFn The sort function - by default LastWriteWins
     * @returns {Promise<Log>}
     * @deprecated
     */
-  static async fromMultihash (ipfs, access, identity, multihash, length = -1, exclude, onProgressCallback) {
-    return Log.fromCID(ipfs, access, identity, multihash, length, exclude, onProgressCallback)
+  static async fromMultihash (ipfs, access, identity, multihash,
+    { length = -1, exclude, onProgressCallback, sortFn } = {}) {
+    return Log.fromCID(ipfs, access, identity, multihash,
+      { length, exclude, onProgressCallback, sortFn })
   }
 
   /**
@@ -472,15 +486,19 @@ class Log extends GSet {
    * @param {AccessController} access The access controller instance
    * @param {Identity} identity The identity instance
    * @param {string} cid The entry's CID
-   * @param {string} [logId] The ID of the log
-   * @param {number} [length=-1] How many entries to include in the log
-   * @param {function(cid, entry, parent, depth)} onProgressCallback
+   * @param {Object} options
+   * @param {string} options.logId The ID of the log
+   * @param {number} options.length How many entries to include in the log
+   * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
+   * @param {Function} options.sortFn The sort function - by default LastWriteWins
    * @return {Promise<Log>} New Log
    */
-  static async fromEntryCid (ipfs, access, identity, cid, logId, length = -1, exclude, onProgressCallback) {
+  static async fromEntryCid (ipfs, access, identity, cid,
+    { logId, length = -1, exclude, onProgressCallback, sortFn }) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromEntryCid(ipfs, cid, length, exclude, onProgressCallback)
-    return new Log(ipfs, access, identity, logId, data.values)
+    const data = await LogIO.fromEntryCid(ipfs, cid, { length, exclude, onProgressCallback })
+    return new Log(ipfs, access, identity, { logId, entries: data.values, sortFn })
   }
 
   /**
@@ -489,14 +507,19 @@ class Log extends GSet {
    * @param {AccessController} access The access controller instance
    * @param {Identity} identity The identity instance
    * @param {string} multihash The entry's multihash
-   * @param {string} [logId] The ID of the log
-   * @param {number} [length=-1] How many entries to include in the log
-   * @param {function(cid, entry, parent, depth)} onProgressCallback
+   * @param {Object} options
+   * @param {string} options.logId The ID of the log
+   * @param {number} options.length How many entries to include in the log
+   * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
+   * @param {Function} options.sortFn The sort function - by default LastWriteWins
    * @return {Promise<Log>} New Log
    * @deprecated
    */
-  static async fromEntryHash (ipfs, access, identity, multihash, logId, length = -1, exclude, onProgressCallback) {
-    return Log.fromEntryCid(ipfs, access, identity, multihash, logId, length, exclude, onProgressCallback)
+  static async fromEntryHash (ipfs, access, identity, multihash,
+    { logId, length = -1, exclude, onProgressCallback, sortFn }) {
+    return Log.fromEntryCid(ipfs, access, identity, multihash,
+      { logId, length, exclude, onProgressCallback, sortFn })
   }
 
   /**
@@ -505,29 +528,39 @@ class Log extends GSet {
    * @param {AccessController} access The access controller instance
    * @param {Identity} identity The identity instance
    * @param {Object} json Log snapshot as JSON object
-   * @param {number} [length=-1] How many entries to include in the log
-   * @param {function(cid, entry, parent, depth)} [onProgressCallback]
+   * @param {Object} options
+   * @param {number} options.length How many entries to include in the log
+   * @param {number} options.timeout Maximum time to wait for each fetch operation, in ms
+   * @param {function(cid, entry, parent, depth)} [options.onProgressCallback]
+   * @param {Function} options.sortFn The sort function - by default LastWriteWins
    * @return {Promise<Log>} New Log
    */
-  static async fromJSON (ipfs, access, identity, json, length = -1, timeout, onProgressCallback) {
+  static async fromJSON (ipfs, access, identity, json,
+    { length = -1, timeout, onProgressCallback, sortFn } = {}) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromJSON(ipfs, json, length, timeout, onProgressCallback)
-    return new Log(ipfs, access, identity, data.id, data.values)
+    const data = await LogIO.fromJSON(ipfs, json, { length, timeout, onProgressCallback })
+    return new Log(ipfs, access, identity, { logId: data.id, entries: data.values, sortFn })
   }
 
   /**
    * Create a new log from an Entry instance.
    * @param {IPFS} ipfs An IPFS instance
+   * @param {AccessController} access The access controller instance
+   * @param {Identity} identity The identity instance
    * @param {Entry|Array<Entry>} sourceEntries An Entry or an array of entries to fetch a log from
-   * @param {number} [length=-1] How many entries to include. Default: infinite.
-   * @param {Array<Entry>} [exclude] Entries to not fetch (cached)
-   * @param {function(cid, entry, parent, depth)} [onProgressCallback]
+   * @param {Object} options
+   * @param {number} options.length How many entries to include. Default: infinite.
+   * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+   * @param {function(cid, entry, parent, depth)} [options.onProgressCallback]
+   * @param {Function} options.sortFn The sort function - by default LastWriteWins
    * @return {Promise<Log>} New Log
    */
-  static async fromEntry (ipfs, access, identity, sourceEntries, length = -1, exclude, onProgressCallback) {
+  static async fromEntry (ipfs, access, identity, sourceEntries,
+    { length = -1, exclude, onProgressCallback, sortFn } = {}) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromEntry(ipfs, sourceEntries, length, exclude, onProgressCallback)
-    return new Log(ipfs, access, identity, data.id, data.values)
+    const data = await LogIO.fromEntry(ipfs, sourceEntries,
+      { length, exclude, onProgressCallback })
+    return new Log(ipfs, access, identity, { logId: data.id, entries: data.values, sortFn })
   }
 
   /**

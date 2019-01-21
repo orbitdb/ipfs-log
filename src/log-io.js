@@ -43,19 +43,20 @@ class LogIO {
    * Create a log from a CID.
    * @param {IPFS} ipfs An IPFS instance
    * @param {string} cid The CID of the log
-   * @param {number} [length=-1] How many items to include in the log
-   * @param {Array<Entry>} [exclude] Entries to not fetch (cached)
-   * @param {function(cid, entry, parent, depth)} onProgressCallback
-   * @returns {Promise<Log>}
+   * @param {Object} options
+   * @param {number} options.length How many items to include in the log
+   * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
    */
-  static async fromCID (ipfs, cid, length = -1, exclude, onProgressCallback) {
+  static async fromCID (ipfs, cid, { length = -1, exclude, onProgressCallback } = {}) {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
     if (!isDefined(cid)) throw new Error(`Invalid CID: ${cid}`)
 
     const logData = await dagNode.read(ipfs, cid, IPLD_LINKS)
     if (!logData.heads || !logData.id) throw LogError.NotALogError()
 
-    const entries = await EntryIO.fetchAll(ipfs, logData.heads, length, exclude, null, onProgressCallback)
+    const entries = await EntryIO.fetchAll(ipfs, logData.heads,
+      { length, exclude, onProgressCallback })
 
     // Find latest clock
     const clock = entries.reduce((clock, entry) => {
@@ -75,7 +76,16 @@ class LogIO {
     }
   }
 
-  static async fromEntryCid (ipfs, entryCid, length = -1, exclude, onProgressCallback) {
+  /**
+   * Create a log from an entry CID.
+   * @param {IPFS} ipfs An IPFS instance
+   * @param {string} entryCid The CID of the entry
+   * @param {Object} options
+   * @param {number} options.length How many items to include in the log
+   * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
+   */
+  static async fromEntryCid (ipfs, entryCid, { length = -1, exclude, onProgressCallback }) {
     if (!isDefined(ipfs)) throw LogError.IpfsNotDefinedError()
     if (!isDefined(entryCid)) throw new Error("'entryCid' must be defined")
 
@@ -85,7 +95,8 @@ class LogIO {
     // Fetch given length, return size at least the given input entries
     length = length > -1 ? Math.max(length, 1) : length
 
-    const entries = await EntryIO.fetchParallel(ipfs, entryCids, length, exclude, null, null, onProgressCallback)
+    const entries = await EntryIO.fetchParallel(ipfs, entryCids,
+      { length, exclude, onProgressCallback })
     // Cap the result at the right size by taking the last n entries,
     // or if given length is -1, then take all
     const sliced = length > -1 ? last(entries, length) : entries
@@ -94,11 +105,22 @@ class LogIO {
     }
   }
 
-  static async fromJSON (ipfs, json, length = -1, timeout, onProgressCallback) {
+  /**
+   * Creates a log data from a JSON object, to be passed to a Log constructor
+   *
+   * @param {IPFS} ipfs An IPFS instance
+   * @param {json} json A json object containing valid log data
+   * @param {Object} options
+   * @param {number} options.length How many entries to include
+   * @param {number} options.timeout Maximum time to wait for each fetch operation, in ms
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
+   **/
+  static async fromJSON (ipfs, json, { length = -1, timeout, onProgressCallback }) {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
     json.heads.forEach(Entry.ensureInterop)
     const headCids = json.heads.map(e => e.cid)
-    const entries = await EntryIO.fetchParallel(ipfs, headCids, length, [], 16, timeout, onProgressCallback)
+    const entries = await EntryIO.fetchParallel(ipfs, headCids,
+      { length, exclude: [], concurrency: 16, timeout, onProgressCallback })
     const finalEntries = entries.slice().sort(Entry.compare)
     return {
       id: json.id,
@@ -111,12 +133,12 @@ class LogIO {
    * Create a new log starting from an entry.
    * @param {IPFS} ipfs An IPFS instance
    * @param {Entry|Array<Entry>} sourceEntries An entry or an array of entries to fetch a log from
-   * @param {number} [length=-1] How many entries to include
-   * @param {Array<Entry>} [exclude] Entries to not fetch (cached)
-   * @param {function(cid, entry, parent, depth)} [onProgressCallback]
-   * @returns {Promise<Log>}
+   * @param {Object} options
+   * @param {number} options.length How many entries to include
+   * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
    */
-  static async fromEntry (ipfs, sourceEntries, length = -1, exclude, onProgressCallback) {
+  static async fromEntry (ipfs, sourceEntries, { length = -1, exclude, onProgressCallback }) {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
@@ -137,7 +159,8 @@ class LogIO {
     const hashes = sourceEntries.map(e => e.cid)
 
     // Fetch the entries
-    const entries = await EntryIO.fetchParallel(ipfs, hashes, length, exclude, null, null, onProgressCallback)
+    const entries = await EntryIO.fetchParallel(ipfs, hashes,
+      { length, exclude, onProgressCallback })
 
     // Combine the fetches with the source entries and take only uniques
     const combined = sourceEntries.concat(entries)

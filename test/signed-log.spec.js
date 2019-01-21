@@ -40,13 +40,13 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     it('creates a signed log', () => {
       const logId = 'A'
-      const log = new Log(ipfs, testACL, testIdentity, logId)
+      const log = new Log(ipfs, testACL, testIdentity, { logId })
       assert.notStrictEqual(log.id, null)
       assert.strictEqual(log.id, logId)
     })
 
     it('has the correct identity', () => {
-      const log = new Log(ipfs, testACL, testIdentity, 'A')
+      const log = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
       assert.notStrictEqual(log.id, null)
       assert.strictEqual(log._identity.id, '04e9224ee3451772f3ad43068313dc5bdc6d3f2c9a8c3a6ba6f73a472d5f47a96ae6d776de13f2fc2076140fd68ca900df2ca4862b06192adbf8f8cb18a99d69aa')
       assert.strictEqual(log._identity.publicKey, '0411a0d38181c9374eca3e480ecada96b1a4db9375c5e08c3991557759d22f6f2f902d0dc5364a948035002504d825308b0c257b7cbb35229c2076532531f8f4ef')
@@ -55,22 +55,22 @@ Object.keys(testAPIs).forEach((IPFS) => {
     })
 
     it('has the correct public key', () => {
-      const log = new Log(ipfs, testACL, testIdentity, 'A')
+      const log = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
       assert.strictEqual(log._identity.publicKey, testIdentity.publicKey)
     })
 
     it('has the correct pkSignature', () => {
-      const log = new Log(ipfs, testACL, testIdentity, 'A')
+      const log = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
       assert.strictEqual(log._identity.signatures.id, testIdentity.signatures.id)
     })
 
     it('has the correct signature', () => {
-      const log = new Log(ipfs, testACL, testIdentity, 'A')
+      const log = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
       assert.strictEqual(log._identity.signatures.publicKey, testIdentity.signatures.publicKey)
     })
 
     it('entries contain an identity', async () => {
-      const log = new Log(ipfs, testACL, testIdentity, 'A')
+      const log = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
       await log.append('one')
       assert.notStrictEqual(log.values[0].sig, null)
       assert.deepStrictEqual(log.values[0].identity, testIdentity.toJSON())
@@ -87,8 +87,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
     })
 
     it('doesn\'t join logs with different IDs ', async () => {
-      const log1 = new Log(ipfs, testACL, testIdentity, 'A')
-      const log2 = new Log(ipfs, testACL, testIdentity2, 'B')
+      const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
+      const log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'B' })
 
       let err
       try {
@@ -108,8 +108,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
     })
 
     it('throws an error if log is signed but trying to merge with an entry that doesn\'t have public signing key', async () => {
-      const log1 = new Log(ipfs, testACL, testIdentity, 'A')
-      const log2 = new Log(ipfs, testACL, testIdentity2, 'A')
+      const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
+      const log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'A' })
 
       let err
       try {
@@ -124,8 +124,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
     })
 
     it('throws an error if log is signed but trying to merge an entry that doesn\'t have a signature', async () => {
-      const log1 = new Log(ipfs, testACL, testIdentity, 'A')
-      const log2 = new Log(ipfs, testACL, testIdentity2, 'A')
+      const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
+      const log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'A' })
 
       let err
       try {
@@ -144,8 +144,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
         return str.substr(0, index) + replacement + str.substr(index + replacement.length)
       }
 
-      const log1 = new Log(ipfs, testACL, testIdentity, 'A')
-      const log2 = new Log(ipfs, testACL, testIdentity2, 'A')
+      const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
+      const log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'A' })
       let err
 
       try {
@@ -165,8 +165,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     it('throws an error if entry doesn\'t have append access', async () => {
       const testACL2 = { canAppend: () => false }
-      const log1 = new Log(ipfs, testACL, testIdentity, 'A')
-      const log2 = new Log(ipfs, testACL2, testIdentity2, 'A')
+      const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'A' })
+      const log2 = new Log(ipfs, testACL2, testIdentity2, { logId: 'A' })
 
       let err
       try {
@@ -182,8 +182,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     it('throws an error upon join if entry doesn\'t have append access', async () => {
       let testACL2 = { canAppend: () => true }
-      const log1 = new Log(ipfs, testACL2, testIdentity, 'A')
-      const log2 = new Log(ipfs, testACL2, testIdentity2, 'A')
+      const log1 = new Log(ipfs, testACL2, testIdentity, { logId: 'A' })
+      const log2 = new Log(ipfs, testACL2, testIdentity2, { logId: 'A' })
 
       let err
       try {

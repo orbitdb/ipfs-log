@@ -84,7 +84,7 @@ See the [API documentation](#api) and [examples](https://github.com/orbitdb/ipfs
 Install dependencies:
 
 ```
-npm install ipfs-log ipfs
+npm install ipfs-log ipfs@^0.33.0
 ```
 
 Run a simple program:
@@ -93,13 +93,13 @@ Run a simple program:
 const IPFS = require('ipfs')
 const Log  = require('ipfs-log')
 
-const ipfs = new IPFS()
+const ipfs = new IPFS({ repo: './ipfs' })
 const log  = new Log(ipfs)
 
 ipfs.on('ready' , () => {
   log.append({ some: 'data' })
-    .then(log => log.append('text'))
-    .then(log => console.log(log.values.map(e => e.payload)))
+    .then(() => log.append('text'))
+    .then(() => console.log(log.values.map(e => e.payload)))
 })
 
 // [ { some: 'data' }, 'text' ]

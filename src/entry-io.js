@@ -9,34 +9,48 @@ class EntryIO {
    * Fetch log entries in parallel.
    * @param {IPFS} ipfs An IPFS instance
    * @param {string|Array<string>} cids CIDs of the entries to fetch
-   * @param {number} [amount=-1] How many entries to fetch
-   * @param {Array<Entry>} [exclude] Entries to not fetch
-   * @param {number} [concurrency=] Max concurrent fetch operations
-   * @param {number} [timeout] Maximum time to wait for each fetch operation, in ms
-   * @param {function(cid, entry, parent, depth)} onProgressCallback
+   * @param {Object} options
+   * @param {number} options.length How many entries to fetch
+   * @param {Array<Entry>} options.exclude Entries to not fetch
+   * @param {number} options.concurrency Max concurrent fetch operations
+   * @param {number} options.timeout Maximum time to wait for each fetch operation, in ms
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
    * @returns {Promise<Array<Entry>>}
    */
-  static async fetchParallel (ipfs, cids, amount = -1, exclude = [], concurrency = null, timeout, onProgressCallback) {
-    const fetchOne = (cid) => EntryIO.fetchAll(ipfs, cid, amount, exclude, timeout, onProgressCallback)
-    const concatArrays = (arr1, arr2) => arr1.concat(arr2)
-    const flatten = (arr) => arr.reduce(concatArrays, [])
+  static async fetchParallel (ipfs, cids,
+    { length = -1, exclude = [], concurrency = null, timeout, onProgressCallback } = {}) {
+    const fetchOne = (cid) => EntryIO.fetchAll(ipfs, cid,
+      { length, exclude, timeout, onProgressCallback })
+    const getHashes = e => e.hash
+    const uniquelyConcatArrays = (arr1, arr2) => {
+      // Add any new entries to arr1
+      const hashes = arr1.map(getHashes)
+      arr2.forEach(entry => {
+        if (hashes.indexOf(entry.hash) === -1) arr1.push(entry)
+      })
+      return arr1
+    }
+    const flatten = (arr) => arr.reduce(uniquelyConcatArrays, [])
     concurrency = Math.max(concurrency || cids.length, 1)
     const entries = await pMap(cids, fetchOne, { concurrency: concurrency })
-    return flatten(entries) // Flatten the results
+    // Flatten the results and get unique vals
+    return flatten(entries)
   }
 
   /**
    * Fetch log entries sequentially.
    * @param {IPFS} ipfs An IPFS instance
    * @param {string|Array<string>} cids CIDs of the entries to fetch
-   * @param {number} [amount=-1] How many entries to fetch
-   * @param {Array<Entry>} [exclude] Entries to not fetch
-   * @param {number} [concurrency] Max concurrent fetch operations
-   * @param {number} [timeout] Maximum time to wait for each fetch operation, in ms
-   * @param {function(cid, entry, parent, depth)} onProgressCallback
+   * @param {Object} options
+   * @param {number} options.length How many entries to fetch
+   * @param {Array<Entry>} options.exclude Entries to not fetch
+   * @param {number} options.concurrency Max concurrent fetch operations
+   * @param {number} options.timeout Maximum time to wait for each fetch operation, in ms
+   * @param {function(cid, entry, parent, depth)} options.onProgressCallback
    * @returns {Promise<Array<Entry>>}
    */
-  static async fetchAll (ipfs, cids, amount = -1, exclude = [], timeout = null, onProgressCallback) {
+  static async fetchAll (ipfs, cids,
+    { length = -1, exclude = [], timeout = null, onProgressCallback }) {
     let result = []
     let cache = {}
     let loadingQueue = Array.isArray(cids)
@@ -58,7 +72,7 @@ class EntryIO {
 
     const shouldFetchMore = () => {
       return loadingQueue.length > 0 &&
-          (result.length < amount || amount < 0)
+          (result.length < length || length < 0)
     }
 
     const fetchEntry = () => {

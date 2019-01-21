@@ -50,10 +50,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
       let log1, log2, log3, log4
 
       beforeEach(async () => {
-        log1 = new Log(ipfs, testACL, testIdentity, 'X')
-        log2 = new Log(ipfs, testACL, testIdentity2, 'X')
-        log3 = new Log(ipfs, testACL, testIdentity3, 'X')
-        log4 = new Log(ipfs, testACL, testIdentity4, 'X')
+        log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
+        log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
+        log3 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
+        log4 = new Log(ipfs, testACL, testIdentity4, { logId: 'X' })
       })
 
       it('joins logs', async () => {

@@ -20,7 +20,7 @@ clean:
 	rm -rf test/keystore/
 
 clean-dependencies: clean
-	if [ -a package-lock.json ]; then rm package-lock.json; fi;
+	rm -f package-lock.json
 
 rebuild: | clean-dependencies build
 	

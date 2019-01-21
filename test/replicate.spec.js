@@ -100,10 +100,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
       }
 
       beforeEach(async () => {
-        log1 = new Log(ipfs1, testACL, testIdentity, logId)
-        log2 = new Log(ipfs2, testACL, testIdentity2, logId)
-        input1 = new Log(ipfs1, testACL, testIdentity, logId)
-        input2 = new Log(ipfs2, testACL, testIdentity2, logId)
+        log1 = new Log(ipfs1, testACL, testIdentity, { logId })
+        log2 = new Log(ipfs2, testACL, testIdentity2, { logId })
+        input1 = new Log(ipfs1, testACL, testIdentity, { logId })
+        input2 = new Log(ipfs2, testACL, testIdentity2, { logId })
         await ipfs1.pubsub.subscribe(channel, handleMessage)
         await ipfs2.pubsub.subscribe(channel, handleMessage2)
       })
@@ -139,7 +139,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         console.log('Waiting for all to process')
         await whileProcessingMessages(config.timeout)
 
-        let result = new Log(ipfs1, testACL, testIdentity, logId)
+        let result = new Log(ipfs1, testACL, testIdentity, { logId })
         await result.join(log1)
         await result.join(log2)
 
