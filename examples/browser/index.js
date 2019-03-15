@@ -1,12 +1,10 @@
 'use strict'
 
 const IPFS = require('ipfs')
-const Keystore = require('orbit-db-keystore')
 const IdentityProvider = require('orbit-db-identity-provider')
 const Log = require('../../src/log')
-const { AccessController } = Log
 
-const dataPath = './ipfs-log/examples/browser/ipfs-0.30.0'
+const dataPath = './ipfs-log/examples/browser/ipfs-0.34.4'
 const ipfs = new IPFS({
   repo: dataPath + '/index.js',
   start: false,
@@ -18,13 +16,11 @@ const ipfs = new IPFS({
 ipfs.on('error', (e) => console.error(e))
 
 ipfs.on('ready', async () => {
-  const keystore = Keystore.create(dataPath + '/keystore')
-  const access = new AccessController()
-  const identity = await IdentityProvider.createIdentity({ id: 'exampleUser', keystore })
+  const identity = await IdentityProvider.createIdentity({ id: 'exampleUser' })
   const outputElm = document.getElementById('output')
 
   // When IPFS is ready, add some log entries
-  let log = new Log(ipfs, access, identity, 'example-log')
+  let log = new Log(ipfs, identity, { logId: 'example-log' })
 
   await log.append('one')
   const values = JSON.stringify(log.values, null, 2)

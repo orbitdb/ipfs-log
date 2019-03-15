@@ -1,7 +1,7 @@
 'use strict'
 
 const Clock = require('./lamport-clock')
-const { isDefined, dagNode } = require('./utils')
+const { isDefined, io } = require('./utils')
 
 const IPLD_LINKS = ['next']
 const IpfsNotDefinedError = () => new Error('Ipfs instance not defined')
@@ -114,7 +114,7 @@ class Entry {
     if (entry.identity) Object.assign(e, { identity: entry.identity })
     if (entry.sig) Object.assign(e, { sig: entry.sig })
 
-    return dagNode.write(ipfs, 'dag-cbor', e, IPLD_LINKS)
+    return io.write(ipfs, 'dag-cbor', e, { links: IPLD_LINKS })
   }
 
   /**
@@ -146,7 +146,7 @@ class Entry {
     if (entry.identity) Object.assign(e, { identity: entry.identity })
     if (entry.sig) Object.assign(e, { sig: entry.sig })
 
-    return dagNode.write(ipfs, 'dag-pb', e, IPLD_LINKS)
+    return io.write(ipfs, 'dag-pb', e, { links: IPLD_LINKS })
   }
 
   /**
@@ -163,7 +163,7 @@ class Entry {
     if (!ipfs) throw IpfsNotDefinedError()
     if (!cid) throw new Error(`Invalid CID: ${cid}`)
 
-    const e = await dagNode.read(ipfs, cid, IPLD_LINKS)
+    const e = await io.read(ipfs, cid, { links: IPLD_LINKS })
 
     let entry = {
       [getCidProp(e)]: cid,

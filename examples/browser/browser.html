@@ -12,7 +12,7 @@
     <script type="text/javascript" src="../../node_modules/ipfs/dist/index.min.js" charset="utf-8"></script>
 
     <script type="text/javascript">
-      const dataPath = './ipfs-log/examples/browser/ipfs-0.30.0'
+      const dataPath = './ipfs-log/examples/browser/ipfs-0.34.4'
       const ipfs = new Ipfs({
         repo: dataPath + '/index.js',
         start: false,
@@ -24,18 +24,11 @@
       ipfs.on('error', (e) => console.error(e))
 
       ipfs.on('ready', async () => {
-        const { AccessController } = Log
-        const keystore = Keystore.create(dataPath + '/keystore')
-        const identitySignerFn = (id, data) => {
-          const key = keystore.getKey(id)
-          return keystore.sign(key, data)
-        }
-        const access = new AccessController()
-        const identity = await Identities.createIdentity({ id: 'exampleUser', keystore })
+        const identity = await Identities.createIdentity({ id: 'exampleUser' })
         const outputElm = document.getElementById('output')
 
         // When IPFS is ready, add some log entries
-        let log = new Log(ipfs, access, identity, 'example-log')
+        let log = new Log(ipfs, identity, { logId: 'example-log'})
 
         await log.append('one')
         const values = JSON.stringify(log.values, null, 2)

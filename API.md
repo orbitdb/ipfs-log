@@ -10,15 +10,23 @@ const Log = require('ipfs-log')
 
 ### Constructor
 
-#### new Log(ipfs, [id])
+#### new Log(ipfs, identity, [{ logId, access, entries, heads, clock, sortFn }])
 
-Create a log. Each log gets a unique ID passed as an argument. Returns a `Log` instance.
+Create a log. Each log gets a unique ID, which can be passed in the `options` as `logId`. Returns a `Log` instance.
 
 ```javascript
-const log = new Log(ipfs, 'logid')
+const IdentityProvider = require('orbit-db-identity-provider')
+const identity = await IdentityProvider.createIdentity({ id: 'peerid' })
+const { AccessController } = Log
+const access = new AccessController()
+const ipfs = new IPFS()
+const log = new Log(ipfs, identity, { logId: 'logid', access: access })
+
+console.log(log.id)
+// 'logId'
 ```
 
-`ipfs` is an instance of IPFS. `id` is a unique log identifier. Usually this should be a user id or similar.
+`ipfs` is an instance of IPFS. `identity` is an instance of [Identity](https://github.com/orbitdb/orbit-db-identity-provider/blob/master/src/identity.js), used to sign entries. `logId` is a unique log identifier. Usually this should be a user id or similar. `access` is an instance of `AccessController`, which by default allows any one to append to the log.
 
 ### Properties
 
@@ -28,7 +36,7 @@ Returns the ID of the log.
 
 #### values
 
-Returns an `Array` of [entries](https://github.com/haadcode/ipfs-log/blob/master/src/entry.js) in the log. The values are in linearized order according to their [Lamport clocks](https://en.wikipedia.org/wiki/Lamport_timestamps).
+Returns an `Array` of [entries](https://github.com/orbitdb/ipfs-log/blob/master/src/entry.js) in the log. The values are in linearized order according to their [Lamport clocks](https://en.wikipedia.org/wiki/Lamport_timestamps).
 
 ```javascript
 const values = log.values
@@ -65,41 +73,53 @@ const tails = log.tails
 
 #### append(data)
 
-Append an entry to the log. Returns a *Promise* that resolves to the updated `Log`.
+Append an entry to the log. Returns a *Promise* that resolves to the latest `Entry`.
 
 `ipfs` IPFS instance.
 
 `log` Log to append to.
 
-`data` can be any type of data: Number, String, Object, etc. It can also be an instance of [Entry](https://github.com/haadcode/ipfs-log/blob/master/src/entry.js).
+`data` can be any type of data: Number, String, Object, etc. It can also be an instance of [Entry](https://github.com/orbtidb/ipfs-log/blob/master/src/entry.js).
 
 ```javascript
-log.append({ some: 'data' })
-  .then(log => log.append('text'))
-  .then(log => console.log(log.values))
-
-// [ 
-//   { 
-//     hash: 'QmV1KFxZnaguPFp57PMXz5Dd1tf6z9U8csJQoy4xWDzzts',
-//     id: 'A',
+await log.append({ some: 'data' })
+await log.append('text'))
+console.log(log.values)
+// [
+// { cid: 'zdpuArZdzymC6zRTMGd5xw4Dw2Q2VCYjuaHAekTSyXS1GmSKs',
+//     id: 'logId',
 //     payload: { some: 'data' },
 //     next: [],
-//     v: 0,
-//     clock: LamportClock { id: 'A', time: 0 } 
+//     v: 1,
+//     clock:
+//      LamportClock {
+//        id:
+//         '04d1b23b1efe6c4d91cd639caf443528b88358369fa552fe8dd9cda17d6c77c42969c688ec0d201e3f8a128334a3b0806ece694b55892b036c0781ce18d35a374b',
+//        time: 1 },
+//     key:
+//      '04d1b23b1efe6c4d91cd639caf443528b88358369fa552fe8dd9cda17d6c77c42969c688ec0d201e3f8a128334a3b0806ece694b55892b036c0781ce18d35a374b',
+//     identity: ...
 //   },
-//   { hash: 'QmSxe4Shd7jt4ExyoBjtvgi1UabNKrZfRJKptwUmSa843u',
-//     id: 'A',
+//   { cid: 'zdpuAuDmVuEfgcUja7SCuNuqkiLCPXVutFTkSE8k8b9oLCVcR',
+//     id: 'logId',
 //     payload: 'text',
-//     next: [ 'QmV1KFxZnaguPFp57PMXz5Dd1tf6z9U8csJQoy4xWDzzts' ],
-//     v: 0,
-//     clock: LamportClock { id: 'A', time: 1 } 
-//   } 
+//     next: [ 'zdpuArZdzymC6zRTMGd5xw4Dw2Q2VCYjuaHAekTSyXS1GmSKs' ],
+//     v: 1,
+//     clock:
+//      LamportClock {
+//        id:
+//         '04d1b23b1efe6c4d91cd639caf443528b88358369fa552fe8dd9cda17d6c77c42969c688ec0d201e3f8a128334a3b0806ece694b55892b036c0781ce18d35a374b',
+//        time: 2 },
+//     key:
+//      '04d1b23b1efe6c4d91cd639caf443528b88358369fa552fe8dd9cda17d6c77c42969c688ec0d201e3f8a128334a3b0806ece694b55892b036c0781ce18d35a374b',
+//     identity:
+//      { ... }
 // ]
 ```
 
-#### join(log, [length], [id])
+#### join(log, [length])
 
-Join the log with another log. Returns a Promise that resolves to a `Log` instance. The size of the joined log can be specified by giving `length` argument. 
+Join the log with another log. Returns a Promise that resolves to a `Log` instance. The size of the joined log can be specified by giving `length` argument.
 
 ```javascript
 // log1.values ==> ['A', 'B', 'C']
@@ -110,9 +130,24 @@ log1.join(log2)
 // ['A', 'B', 'C', 'D', 'E']
 ```
 
+### toCID()
+
+Returns the cid of the log.
+
+Converting the log to a cid will persist the contents of `log.toJSON` to IPFS, thus causing side effects.
+
+```javascript
+log1.toCID()
+  .then(cid => console.log(cid))
+
+// zdpuAxkRPEwk9LZjdPuEH7TEPCjFeWfqNj1xQM7Z2yj2hGuvp
+```
+
 ### toMultihash()
 
-Writes the log to IPFS and returns the Multihash of the log. Returns a `Promise` that resolves to a Base58 encoded `string`.
+Returns the multihash of the log.
+
+Converting the log to a multihash will persist the contents of `log.toJSON` to IPFS, thus causing side effects.
 
 ```javascript
 log1.toMultihash()
@@ -153,19 +188,25 @@ Log.isLog('hello')
 // false
 ```
 
-#### Log.fromEntry(ipfs, entry, [length=-1])
+#### Log.fromEntry(ipfs, identity, sourceEntries, [{ access, length=-1, exclude, onProgressCallback, sortFn }])
 
 Create a `Log` from an `Entry`.
 
 Creating a log from an entry will retrieve entries from IPFS, thus causing side effects.
 
-#### Log.toMultihash(ipfs, log)
+#### Log.fromEntryCid(ipfs, identity, cid, [{ logId, length=-1, access, exclude, onProgressCallback, sortFn }])
 
-Returns the multihash of the log.
+Create a `Log` from a cid of an `Entry`
 
-Converting the log to a multihash will persist the log to IPFS, thus causing side effects.
+Creating a log from a cid will retrieve entries from IPFS, thus causing side effects.
 
-#### Log.fromMultihash(ipfs, multihash, [length=-1])
+#### Log.fromCID(ipfs, identity, cid, [{ access, length=-1, exclude, onProgressCallback, sortFn }])
+
+Create a `Log` from a cid.
+
+Creating a log from a cid will retrieve entries from IPFS, thus causing side effects.
+
+#### Log.fromMultihash(ipfs, identity, multihash, [{ access, length=-1, exclude, onProgressCallback, sortFn }])
 
 Create a `Log` from a multihash.
 

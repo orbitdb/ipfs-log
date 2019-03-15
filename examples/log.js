@@ -1,9 +1,8 @@
 'use strict'
 
 const IPFS = require('ipfs')
-const Keystore = require('orbit-db-keystore')
 const Log = require('../src/log')
-const { AccessController, IdentityProvider } = Log
+const IdentityProvider = require('orbit-db-identity-provider')
 
 const dataPath = './ipfs/examples/log'
 
@@ -17,27 +16,19 @@ const ipfs = new IPFS({
 
 ipfs.on('error', (err) => console.error(err))
 ipfs.on('ready', async () => {
-  const keystore = Keystore.create(dataPath + '/keystore')
-  const identitySignerFn = (id, data) => {
-    const key = keystore.getKey(id)
-    return keystore.sign(key, data)
-  }
-  const access = new AccessController()
-
   let identityA, identityB, identityC
 
   try {
-    identityA = await IdentityProvider.createIdentity(keystore, 'identityA', identitySignerFn)
-    identityB = await IdentityProvider.createIdentity(keystore, 'identityB', identitySignerFn)
-    identityC = await IdentityProvider.createIdentity(keystore, 'identityC', identitySignerFn)
+    identityA = await IdentityProvider.createIdentity({ id: 'identityA' })
+    identityB = await IdentityProvider.createIdentity({ id: 'identityB' })
+    identityC = await IdentityProvider.createIdentity({ id: 'identityC' })
   } catch (e) {
     console.error(e)
   }
 
-  // Create access controllers: allow write for key1 and key2
-  let log1 = new Log(ipfs, access, identityA, 'A')
-  let log2 = new Log(ipfs, access, identityB, 'A')
-  let log3 = new Log(ipfs, access, identityC, 'A')
+  let log1 = new Log(ipfs, identityA, { lodId: 'A' })
+  let log2 = new Log(ipfs, identityB, { lodId: 'A' })
+  let log3 = new Log(ipfs, identityC, { lodId: 'A' })
 
   try {
     await log1.append('one')

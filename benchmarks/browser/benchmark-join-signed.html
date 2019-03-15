@@ -10,12 +10,11 @@
     <pre><i>
     const testKeyPath = '../test/fixtures/keys'
     const keystore = Keystore.create(testKeyPath)
-    const access = new AccessController()
     const identity1 = await Identities.createIdentity({ id: 'userA', keystore })
     const identity2 = await Identities.createIdentity({ id: 'userA', keystore })
 
-    log1 = new Log(ipfs, access, identity1, 'browser-benchmark-join-signed')
-    log2 = new Log(ipfs, access, identity2, 'browser-benchmark-join-signed')
+    log1 = new Log(ipfs, identity1, { logId: 'browser-benchmark-join-signed' })
+    log2 = new Log(ipfs, identity2, { logId: 'browser-benchmark-join-signed' })
 
     const add1 = await log1.append("a" + loopCount)
     const add2 = await log2.append("b" + loopCount)
@@ -91,11 +90,10 @@
 
           const testKeyPath = '../test/fixtures/keys'
           const keystore = Keystore.create(testKeyPath)
-          const access = new AccessController()
           const identity = await Identities.createIdentity({ id: 'userA', keystore })
 
-          log1 = new Log(ipfs, access, identity, 'browser-benchmark-join-signed')
-          log2 = new Log(ipfs, access, identity, 'browser-benchmark-join-signed')
+          log1 = new Log(ipfs, identity, { logId: 'browser-benchmark-join-signed' })
+          log2 = new Log(ipfs, identity, { logId: 'browser-benchmark-join-signed' })
           queryLoop()
         })
 

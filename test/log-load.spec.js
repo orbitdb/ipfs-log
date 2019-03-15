@@ -7,7 +7,6 @@ const { LastWriteWins } = require('../src/log-sorting')
 const bigLogString = require('./fixtures/big-log.fixture.js')
 const Entry = require('../src/entry')
 const Log = require('../src/log')
-const AccessController = Log.AccessController
 const IdentityProvider = require('orbit-db-identity-provider')
 
 // Alternate tiebreaker. Always does the opposite of LastWriteWins
@@ -33,7 +32,6 @@ Object.keys(testAPIs).forEach((IPFS) => {
   describe('Log - Load (' + IPFS + ')', function () {
     this.timeout(config.timeout)
 
-    const testACL = new AccessController()
     const { identityKeysPath, signingKeysPath } = config
     const ipfsConfig = Object.assign({}, config.defaultIpfsConfig, {
       repo: config.defaultIpfsConfig.repo + '-log-load' + new Date().getTime()
@@ -72,13 +70,13 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('creates a log from an entry', async () => {
-        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let data = fixture.log
         let json = fixture.json
 
         json.heads = await Promise.all(json.heads.map(headCID => Entry.fromCID(ipfs, headCID)))
 
-        let log = await Log.fromJSON(ipfs, testACL, testIdentity, json, { logId: 'X' })
+        let log = await Log.fromJSON(ipfs, testIdentity, json, { logId: 'X' })
 
         assert.strictEqual(log.id, data.heads[0].id)
         assert.strictEqual(log.length, 16)
@@ -86,13 +84,13 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('creates a log from an entry with custom tiebreaker', async () => {
-        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let data = fixture.log
         let json = fixture.json
 
         json.heads = await Promise.all(json.heads.map(headCID => Entry.fromCID(ipfs, headCID)))
 
-        let log = await Log.fromJSON(ipfs, testACL, testIdentity, json,
+        let log = await Log.fromJSON(ipfs, testIdentity, json,
           { length: -1, logId: 'X', sortFn: FirstWriteWins })
 
         assert.strictEqual(log.id, data.heads[0].id)
@@ -109,13 +107,13 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('creates a log from an entry hash', async () => {
-        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let data = fixture.log
         let json = fixture.json
 
-        let log1 = await Log.fromEntryCid(ipfs, testACL, testIdentity, json.heads[0],
+        let log1 = await Log.fromEntryCid(ipfs, testIdentity, json.heads[0],
           { logId: 'X' })
-        let log2 = await Log.fromEntryCid(ipfs, testACL, testIdentity, json.heads[1],
+        let log2 = await Log.fromEntryCid(ipfs, testIdentity, json.heads[1],
           { logId: 'X' })
 
         await log1.join(log2)
@@ -126,13 +124,13 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('creates a log from an entry hash with custom tiebreaker', async () => {
-        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let data = fixture.log
         let json = fixture.json
 
-        let log1 = await Log.fromEntryCid(ipfs, testACL, testIdentity, json.heads[0],
+        let log1 = await Log.fromEntryCid(ipfs, testIdentity, json.heads[0],
           { logId: 'X', sortFn: FirstWriteWins })
-        let log2 = await Log.fromEntryCid(ipfs, testACL, testIdentity, json.heads[1],
+        let log2 = await Log.fromEntryCid(ipfs, testIdentity, json.heads[1],
           { logId: 'X', sortFn: FirstWriteWins })
 
         await log1.join(log2)
@@ -151,20 +149,20 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('creates a log from an entry', async () => {
-        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let data = fixture.log
 
-        let log = await Log.fromEntry(ipfs, testACL, testIdentity, data.heads, { length: -1 })
+        let log = await Log.fromEntry(ipfs, testIdentity, data.heads, { length: -1 })
         assert.strictEqual(log.id, data.heads[0].id)
         assert.strictEqual(log.length, 16)
         assert.deepStrictEqual(log.values.map(e => e.payload), fixture.expectedData)
       })
 
       it('creates a log from an entry with custom tiebreaker', async () => {
-        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let data = fixture.log
 
-        let log = await Log.fromEntry(ipfs, testACL, testIdentity, data.heads,
+        let log = await Log.fromEntry(ipfs, testIdentity, data.heads,
           { length: -1, sortFn: FirstWriteWins })
         assert.strictEqual(log.id, data.heads[0].id)
         assert.strictEqual(log.length, 16)
@@ -172,17 +170,17 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('keeps the original heads', async () => {
-        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let fixture = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let data = fixture.log
 
-        let log1 = await Log.fromEntry(ipfs, testACL, testIdentity, data.heads,
+        let log1 = await Log.fromEntry(ipfs, testIdentity, data.heads,
           { length: data.heads.length })
         assert.strictEqual(log1.id, data.heads[0].id)
         assert.strictEqual(log1.length, data.heads.length)
         assert.strictEqual(log1.values[0].payload, 'entryC0')
         assert.strictEqual(log1.values[1].payload, 'entryA10')
 
-        let log2 = await Log.fromEntry(ipfs, testACL, testIdentity, data.heads, { length: 4 })
+        let log2 = await Log.fromEntry(ipfs, testIdentity, data.heads, { length: 4 })
         assert.strictEqual(log2.id, data.heads[0].id)
         assert.strictEqual(log2.length, 4)
         assert.strictEqual(log2.values[0].payload, 'entryC0')
@@ -190,7 +188,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         assert.strictEqual(log2.values[2].payload, 'entryA9')
         assert.strictEqual(log2.values[3].payload, 'entryA10')
 
-        let log3 = await Log.fromEntry(ipfs, testACL, testIdentity, data.heads, { length: 7 })
+        let log3 = await Log.fromEntry(ipfs, testIdentity, data.heads, { length: 7 })
         assert.strictEqual(log3.id, data.heads[0].id)
         assert.strictEqual(log3.length, 7)
         assert.strictEqual(log3.values[0].payload, 'entryB5')
@@ -222,14 +220,14 @@ Object.keys(testAPIs).forEach((IPFS) => {
           i++
         }
 
-        await Log.fromEntry(ipfs, testACL, testIdentity, last(items1),
+        await Log.fromEntry(ipfs, testIdentity, last(items1),
           { length: -1, exclude: [], onProgressCallback: callback })
       })
 
       it('retrieves partial log from an entry CID', async () => {
-        const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        const log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
-        const log3 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
+        const log1 = new Log(ipfs, testIdentity, { logId: 'X' })
+        const log2 = new Log(ipfs, testIdentity2, { logId: 'X' })
+        const log3 = new Log(ipfs, testIdentity3, { logId: 'X' })
         let items1 = []
         let items2 = []
         let items3 = []
@@ -247,11 +245,11 @@ Object.keys(testAPIs).forEach((IPFS) => {
         }
 
         // limit to 10 entries
-        const a = await Log.fromEntry(ipfs, testACL, testIdentity, last(items1), { length: 10 })
+        const a = await Log.fromEntry(ipfs, testIdentity, last(items1), { length: 10 })
         assert.strictEqual(a.length, 10)
 
         // limit to 42 entries
-        const b = await Log.fromEntry(ipfs, testACL, testIdentity, last(items1), { length: 42 })
+        const b = await Log.fromEntry(ipfs, testIdentity, last(items1), { length: 42 })
         assert.strictEqual(b.length, 42)
       })
 
@@ -266,7 +264,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
         let err
         try {
-          await Log.fromEntry(ipfs, testACL, testIdentity, last(items1).cid, { length: 1 })
+          await Log.fromEntry(ipfs, testIdentity, last(items1).cid, { length: 1 })
         } catch (e) {
           err = e
         }
@@ -274,9 +272,9 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('retrieves full log from an entry CID', async () => {
-        const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        const log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
-        const log3 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
+        const log1 = new Log(ipfs, testIdentity, { logId: 'X' })
+        const log2 = new Log(ipfs, testIdentity2, { logId: 'X' })
+        const log3 = new Log(ipfs, testIdentity3, { logId: 'X' })
         let items1 = []
         let items2 = []
         let items3 = []
@@ -293,23 +291,23 @@ Object.keys(testAPIs).forEach((IPFS) => {
           items3.push(n3)
         }
 
-        const a = await Log.fromEntry(ipfs, testACL, testIdentity, [last(items1)],
+        const a = await Log.fromEntry(ipfs, testIdentity, [last(items1)],
           { length: amount })
         assert.strictEqual(a.length, amount)
 
-        const b = await Log.fromEntry(ipfs, testACL, testIdentity2, [last(items2)],
+        const b = await Log.fromEntry(ipfs, testIdentity2, [last(items2)],
           { length: amount * 2 })
         assert.strictEqual(b.length, amount * 2)
 
-        const c = await Log.fromEntry(ipfs, testACL, testIdentity3, [last(items3)],
+        const c = await Log.fromEntry(ipfs, testIdentity3, [last(items3)],
           { length: amount * 3 })
         assert.strictEqual(c.length, amount * 3)
       })
 
       it('retrieves full log from an entry CID 2', async () => {
-        const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        const log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
-        const log3 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
+        const log1 = new Log(ipfs, testIdentity, { logId: 'X' })
+        const log2 = new Log(ipfs, testIdentity2, { logId: 'X' })
+        const log3 = new Log(ipfs, testIdentity3, { logId: 'X' })
         let items1 = []
         let items2 = []
         let items3 = []
@@ -326,23 +324,23 @@ Object.keys(testAPIs).forEach((IPFS) => {
           items3.push(n3)
         }
 
-        const a = await Log.fromEntry(ipfs, testACL, testIdentity, last(items1),
+        const a = await Log.fromEntry(ipfs, testIdentity, last(items1),
           { length: amount })
         assert.strictEqual(a.length, amount)
 
-        const b = await Log.fromEntry(ipfs, testACL, testIdentity2, last(items2),
+        const b = await Log.fromEntry(ipfs, testIdentity2, last(items2),
           { length: amount * 2 })
         assert.strictEqual(b.length, amount * 2)
 
-        const c = await Log.fromEntry(ipfs, testACL, testIdentity3, last(items3),
+        const c = await Log.fromEntry(ipfs, testIdentity3, last(items3),
           { length: amount * 3 })
         assert.strictEqual(c.length, amount * 3)
       })
 
       it('retrieves full log from an entry CID 3', async () => {
-        const log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        const log2 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
-        const log3 = new Log(ipfs, testACL, testIdentity4, { logId: 'X' })
+        const log1 = new Log(ipfs, testIdentity, { logId: 'X' })
+        const log2 = new Log(ipfs, testIdentity3, { logId: 'X' })
+        const log3 = new Log(ipfs, testIdentity4, { logId: 'X' })
         let items1 = []
         let items2 = []
         let items3 = []
@@ -368,7 +366,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
           items3.push(n3)
         }
 
-        const a = await Log.fromEntry(ipfs, testACL, testIdentity, last(items1),
+        const a = await Log.fromEntry(ipfs, testIdentity, last(items1),
           { length: amount })
         assert.strictEqual(a.length, amount)
 
@@ -395,12 +393,12 @@ Object.keys(testAPIs).forEach((IPFS) => {
           'entryB10'
         ]
 
-        const b = await Log.fromEntry(ipfs, testACL, testIdentity3, last(items2),
+        const b = await Log.fromEntry(ipfs, testIdentity3, last(items2),
           { length: amount * 2 })
         assert.strictEqual(b.length, amount * 2)
         assert.deepStrictEqual(b.values.map((e) => e.payload), itemsInB)
 
-        let c = await Log.fromEntry(ipfs, testACL, testIdentity4, last(items3),
+        let c = await Log.fromEntry(ipfs, testIdentity4, last(items3),
           { length: amount * 3 })
         await c.append('EOF')
         assert.strictEqual(c.length, amount * 3 + 1)
@@ -441,11 +439,11 @@ Object.keys(testAPIs).forEach((IPFS) => {
         assert.deepStrictEqual(c.values.map(e => e.payload), tmp)
 
         // make sure logX comes after A, B and C
-        let logX = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
+        let logX = new Log(ipfs, testIdentity2, { logId: 'X' })
         await logX.append('1')
         await logX.append('2')
         await logX.append('3')
-        const d = await Log.fromEntry(ipfs, testACL, testIdentity2, last(logX.values),
+        const d = await Log.fromEntry(ipfs, testIdentity2, last(logX.values),
           { length: -1 })
 
         await c.join(d)
@@ -453,9 +451,9 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
         await c.append('DONE')
         await d.append('DONE')
-        const f = await Log.fromEntry(ipfs, testACL, testIdentity2, last(c.values),
+        const f = await Log.fromEntry(ipfs, testIdentity2, last(c.values),
           { amount: -1, exclude: [] })
-        const g = await Log.fromEntry(ipfs, testACL, testIdentity2, last(d.values),
+        const g = await Log.fromEntry(ipfs, testIdentity2, last(d.values),
           { length: -1, exclude: [] })
 
         assert.strictEqual(f.toString(), bigLogString)
@@ -463,9 +461,9 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('retrieves full log of randomly joined log', async () => {
-        let log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        let log2 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
-        let log3 = new Log(ipfs, testACL, testIdentity4, { logId: 'X' })
+        let log1 = new Log(ipfs, testIdentity, { logId: 'X' })
+        let log2 = new Log(ipfs, testIdentity3, { logId: 'X' })
+        let log3 = new Log(ipfs, testIdentity4, { logId: 'X' })
 
         for (let i = 1; i <= 5; i++) {
           await log1.append('entryA' + i)
@@ -500,10 +498,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('retrieves randomly joined log deterministically', async () => {
-        let logA = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        let logB = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
-        let log3 = new Log(ipfs, testACL, testIdentity4, { logId: 'X' })
-        let log = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
+        let logA = new Log(ipfs, testIdentity, { logId: 'X' })
+        let logB = new Log(ipfs, testIdentity3, { logId: 'X' })
+        let log3 = new Log(ipfs, testIdentity4, { logId: 'X' })
+        let log = new Log(ipfs, testIdentity2, { logId: 'X' })
 
         for (let i = 1; i <= 5; i++) {
           await logA.append('entryA' + i)
@@ -536,7 +534,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('sorts', async () => {
-        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let log = testLog.log
         const expectedData = testLog.expectedData
 
@@ -585,7 +583,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('sorts deterministically from random order', async () => {
-        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let log = testLog.log
         const expectedData = testLog.expectedData
 
@@ -601,26 +599,26 @@ Object.keys(testAPIs).forEach((IPFS) => {
       })
 
       it('sorts entries correctly', async () => {
-        let testLog = await LogCreator.createLogWithTwoHundredEntries(ipfs, testACL, identities)
+        let testLog = await LogCreator.createLogWithTwoHundredEntries(ipfs, identities)
         let log = testLog.log
         const expectedData = testLog.expectedData
         assert.deepStrictEqual(log.values.map(e => e.payload), expectedData)
       })
 
       it('sorts entries according to custom tiebreaker function', async () => {
-        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
 
         let firstWriteWinsLog =
-          new Log(ipfs, testACL, identities[0], { logId: 'X', sortFn: FirstWriteWins })
+          new Log(ipfs, identities[0], { logId: 'X', sortFn: FirstWriteWins })
         await firstWriteWinsLog.join(testLog.log)
         assert.deepStrictEqual(firstWriteWinsLog.values.map(e => e.payload),
           firstWriteExpectedData)
       })
 
       it('throws an error if the tiebreaker returns zero', async () => {
-        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, testACL, identities)
+        let testLog = await LogCreator.createLogWithSixteenEntries(ipfs, identities)
         let firstWriteWinsLog =
-          new Log(ipfs, testACL, identities[0], { logId: 'X', sortFn: BadComparatorReturnsZero })
+          new Log(ipfs, identities[0], { logId: 'X', sortFn: BadComparatorReturnsZero })
         await firstWriteWinsLog.join(testLog.log)
         assert.throws(() => firstWriteWinsLog.values, Error, 'Error Thrown')
       })
@@ -628,10 +626,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
       it('retrieves partially joined log deterministically - single next pointer', async () => {
         const nextPointerAmount = 1
 
-        let logA = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        let logB = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
-        let log3 = new Log(ipfs, testACL, testIdentity4, { logId: 'X' })
-        let log = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
+        let logA = new Log(ipfs, testIdentity, { logId: 'X' })
+        let logB = new Log(ipfs, testIdentity3, { logId: 'X' })
+        let log3 = new Log(ipfs, testIdentity4, { logId: 'X' })
+        let log = new Log(ipfs, testIdentity2, { logId: 'X' })
 
         for (let i = 1; i <= 5; i++) {
           await logA.append('entryA' + i, nextPointerAmount)
@@ -656,7 +654,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         const cid = await log.toCID()
 
         // First 5
-        let res = await Log.fromCID(ipfs, testACL, testIdentity2, cid, { length: 5 })
+        let res = await Log.fromCID(ipfs, testIdentity2, cid, { length: 5 })
 
         const first5 = [
           'entryA5', 'entryB5', 'entryC0', 'entryA9', 'entryA10'
@@ -665,7 +663,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         assert.deepStrictEqual(res.values.map(e => e.payload), first5)
 
         // First 11
-        res = await Log.fromCID(ipfs, testACL, testIdentity2, cid, { length: 11 })
+        res = await Log.fromCID(ipfs, testIdentity2, cid, { length: 11 })
 
         const first11 = [
           'entryA3', 'entryB3', 'entryA4', 'entryB4',
@@ -677,7 +675,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         assert.deepStrictEqual(res.values.map(e => e.payload), first11)
 
         // All but one
-        res = await Log.fromCID(ipfs, testACL, testIdentity2, cid, { length: 16 - 1 })
+        res = await Log.fromCID(ipfs, testIdentity2, cid, { length: 16 - 1 })
 
         const all = [
           'entryA1', /* excl */ 'entryA2', 'entryB2', 'entryA3', 'entryB3',
@@ -692,10 +690,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
       it('retrieves partially joined log deterministically - multiple next pointers', async () => {
         const nextPointersAmount = 64
 
-        let logA = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        let logB = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
-        let log3 = new Log(ipfs, testACL, testIdentity4, { logId: 'X' })
-        let log = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
+        let logA = new Log(ipfs, testIdentity, { logId: 'X' })
+        let logB = new Log(ipfs, testIdentity3, { logId: 'X' })
+        let log3 = new Log(ipfs, testIdentity4, { logId: 'X' })
+        let log = new Log(ipfs, testIdentity2, { logId: 'X' })
 
         for (let i = 1; i <= 5; i++) {
           await logA.append('entryA' + i, nextPointersAmount)
@@ -720,7 +718,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         const cid = await log.toCID()
 
         // First 5
-        let res = await Log.fromCID(ipfs, testACL, testIdentity2, cid, { length: 5 })
+        let res = await Log.fromCID(ipfs, testIdentity2, cid, { length: 5 })
 
         const first5 = [
           'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10'
@@ -729,7 +727,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         assert.deepStrictEqual(res.values.map(e => e.payload), first5)
 
         // First 11
-        res = await Log.fromCID(ipfs, testACL, testIdentity2, cid, { length: 11 })
+        res = await Log.fromCID(ipfs, testIdentity2, cid, { length: 11 })
 
         const first11 = [
           'entryA1', 'entryA2', 'entryA3', 'entryA4',
@@ -741,7 +739,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         assert.deepStrictEqual(res.values.map(e => e.payload), first11)
 
         // All but one
-        res = await Log.fromCID(ipfs, testACL, testIdentity2, cid, { length: 16 - 1 })
+        res = await Log.fromCID(ipfs, testIdentity2, cid, { length: 16 - 1 })
 
         const all = [
           'entryA1', /* excl */ 'entryA2', 'entryB2', 'entryA3', 'entryB3',
@@ -773,9 +771,9 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
         beforeEach(async () => {
           const ts = new Date().getTime()
-          log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-          log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
-          log3 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
+          log1 = new Log(ipfs, testIdentity, { logId: 'X' })
+          log2 = new Log(ipfs, testIdentity2, { logId: 'X' })
+          log3 = new Log(ipfs, testIdentity3, { logId: 'X' })
           items1 = []
           items2 = []
           items3 = []
@@ -802,7 +800,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         })
 
         it('returns all entries - no excluded entries', async () => {
-          const a = await Log.fromEntry(ipfs, testACL, testIdentity, last(items1),
+          const a = await Log.fromEntry(ipfs, testIdentity, last(items1),
             { length: -1 })
           assert.strictEqual(a.length, amount)
           assert.strictEqual(a.values[0].cid, items1[0].cid)
@@ -810,13 +808,13 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
         it('returns all entries - including excluded entries', async () => {
           // One entry
-          const a = await Log.fromEntry(ipfs, testACL, testIdentity, last(items1),
+          const a = await Log.fromEntry(ipfs, testIdentity, last(items1),
             { length: -1, exclude: [items1[0]] })
           assert.strictEqual(a.length, amount)
           assert.strictEqual(a.values[0].cid, items1[0].cid)
 
           // All entries
-          const b = await Log.fromEntry(ipfs, testACL, testIdentity, last(items1),
+          const b = await Log.fromEntry(ipfs, testIdentity, last(items1),
             { length: -1, exclude: items1 })
           assert.strictEqual(b.length, amount)
           assert.strictEqual(b.values[0].cid, items1[0].cid)

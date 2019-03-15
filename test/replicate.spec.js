@@ -3,7 +3,6 @@
 const assert = require('assert')
 const rmrf = require('rimraf')
 const Log = require('../src/log')
-const AccessController = Log.AccessController
 const IdentityProvider = require('orbit-db-identity-provider')
 
 // Test utils
@@ -23,7 +22,6 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
     let ipfs1, ipfs2, id1, id2, testIdentity, testIdentity2
 
-    const testACL = new AccessController()
     const { identityKeysPath, signingKeysPath } = config
     const ipfsConfig1 = Object.assign({}, config.daemon1, {
       repo: config.daemon1.repo + new Date().getTime()
@@ -81,7 +79,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         processing++
         process.stdout.write('\r')
         process.stdout.write(`> Buffer1: ${buffer1.length} - Buffer2: ${buffer2.length}`)
-        const log = await Log.fromCID(ipfs1, testACL, testIdentity, message.data.toString(), -1)
+        const log = await Log.fromCID(ipfs1, testIdentity, message.data.toString(), -1)
         await log1.join(log)
         processing--
       }
@@ -94,16 +92,16 @@ Object.keys(testAPIs).forEach((IPFS) => {
         processing++
         process.stdout.write('\r')
         process.stdout.write(`> Buffer1: ${buffer1.length} - Buffer2: ${buffer2.length}`)
-        const log = await Log.fromCID(ipfs2, testACL, testIdentity2, message.data.toString(), -1, null)
+        const log = await Log.fromCID(ipfs2, testIdentity2, message.data.toString(), -1, null)
         await log2.join(log)
         processing--
       }
 
       beforeEach(async () => {
-        log1 = new Log(ipfs1, testACL, testIdentity, { logId })
-        log2 = new Log(ipfs2, testACL, testIdentity2, { logId })
-        input1 = new Log(ipfs1, testACL, testIdentity, { logId })
-        input2 = new Log(ipfs2, testACL, testIdentity2, { logId })
+        log1 = new Log(ipfs1, testIdentity, { logId })
+        log2 = new Log(ipfs2, testIdentity2, { logId })
+        input1 = new Log(ipfs1, testIdentity, { logId })
+        input2 = new Log(ipfs2, testIdentity2, { logId })
         await ipfs1.pubsub.subscribe(channel, handleMessage)
         await ipfs2.pubsub.subscribe(channel, handleMessage2)
       })
@@ -139,7 +137,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         console.log('Waiting for all to process')
         await whileProcessingMessages(config.timeout)
 
-        let result = new Log(ipfs1, testACL, testIdentity, { logId })
+        let result = new Log(ipfs1, testIdentity, { logId })
         await result.join(log1)
         await result.join(log2)
 

@@ -3,7 +3,6 @@
 const assert = require('assert')
 const rmrf = require('rimraf')
 const Log = require('../src/log')
-const AccessController = Log.AccessController
 const IdentityProvider = require('orbit-db-identity-provider')
 
 // Test utils
@@ -20,7 +19,6 @@ Object.keys(testAPIs).forEach((IPFS) => {
   describe('Log - Append (' + IPFS + ')', function () {
     this.timeout(config.timeout)
 
-    const testACL = new AccessController()
     const { identityKeysPath, signingKeysPath } = config
     const ipfsConfig = Object.assign({}, config.defaultIpfsConfig, {
       repo: config.defaultIpfsConfig.repo + '-log-append' + new Date().getTime()
@@ -42,7 +40,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         let log
 
         before(async () => {
-          log = new Log(ipfs, testACL, testIdentity, 'A')
+          log = new Log(ipfs, testIdentity, 'A')
           await log.append('hello1')
         })
 
@@ -83,7 +81,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         let log
 
         before(async () => {
-          log = new Log(ipfs, testACL, testIdentity, 'A')
+          log = new Log(ipfs, testIdentity, 'A')
           for (let i = 0; i < amount; i++) {
             await log.append('hello' + i, nextPointerAmount)
             // Make sure the log has the right heads after each append

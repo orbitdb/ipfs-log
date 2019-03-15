@@ -5,7 +5,7 @@ const sinon = require('sinon')
 const rmrf = require('rimraf')
 const Entry = require('../src/entry')
 const Log = require('../src/log')
-const { dagNode } = require('../src/utils')
+const { io } = require('../src/utils')
 const AccessController = Log.AccessController
 const IdentityProvider = require('orbit-db-identity-provider')
 const v0Entries = require('./fixtures/v0-entries.fixture')
@@ -269,8 +269,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
       it('creates a entry from ipfs multihash of v0 entries', async () => {
         const expectedCid = 'QmTLLKuNVXC95rGcnrL1M3xKf4dWYuu3MeAM3LUh3YNDJ7'
-        const entry1Cid = await dagNode.write(ipfs, 'dag-pb', v0Entries.helloWorld)
-        const entry2Cid = await dagNode.write(ipfs, 'dag-pb', v0Entries.helloAgain)
+        const entry1Cid = await io.write(ipfs, 'dag-pb', v0Entries.helloWorld)
+        const entry2Cid = await io.write(ipfs, 'dag-pb', v0Entries.helloAgain)
         const final = await Entry.fromCID(ipfs, entry2Cid)
 
         assert.strictEqual(final.id, 'A')
@@ -293,7 +293,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         assert.strictEqual(Object.assign({}, finalV1).hash, undefined)
 
         const expectedCidV0 = 'QmderYccue9XqB7V4EYf71ZygWELdzdbVqo1oxR4nMRrCh'
-        const entryCidV0 = await dagNode.write(ipfs, 'dag-pb', v0Entries.helloWorld)
+        const entryCidV0 = await io.write(ipfs, 'dag-pb', v0Entries.helloWorld)
         const finalV0 = await Entry.fromCID(ipfs, entryCidV0)
         assert.strictEqual(finalV0.cid, finalV0.hash)
         assert.strictEqual(finalV0.cid, expectedCidV0)
@@ -333,8 +333,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
         const spy = sinon.spy(Entry, 'fromCID')
 
         const expectedCid = 'QmTLLKuNVXC95rGcnrL1M3xKf4dWYuu3MeAM3LUh3YNDJ7'
-        await dagNode.write(ipfs, 'dag-pb', v0Entries.helloWorld)
-        const entry2Cid = await dagNode.write(ipfs, 'dag-pb', v0Entries.helloAgain)
+        await io.write(ipfs, 'dag-pb', v0Entries.helloWorld)
+        const entry2Cid = await io.write(ipfs, 'dag-pb', v0Entries.helloAgain)
         const final = await Entry.fromCID(ipfs, entry2Cid)
 
         assert(spy.calledOnceWith(ipfs, entry2Cid))

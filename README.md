@@ -84,7 +84,7 @@ See the [API documentation](#api) and [examples](https://github.com/orbitdb/ipfs
 Install dependencies:
 
 ```
-npm install ipfs-log ipfs@^0.33.0
+npm install ipfs-log ipfs
 ```
 
 Run a simple program:
@@ -92,14 +92,16 @@ Run a simple program:
 ```javascript
 const IPFS = require('ipfs')
 const Log  = require('ipfs-log')
+const IdentityProvider = require('orbit-db-identity-provider')
 
-const ipfs = new IPFS({ repo: './ipfs' })
-const log  = new Log(ipfs)
+const identity = await IdentityProvider.createIdentity({ id: 'peerid' })
+const ipfs = new IPFS()
+const log  = new Log(ipfs, identity)
 
-ipfs.on('ready' , () => {
-  log.append({ some: 'data' })
-    .then(() => log.append('text'))
-    .then(() => console.log(log.values.map(e => e.payload)))
+ipfs.on('ready' , async () => {
+  await log.append({ some: 'data' })
+  await log.append('text'))
+  console.log(log.values.map(e => e.payload))
 })
 
 // [ { some: 'data' }, 'text' ]
@@ -125,7 +127,7 @@ See [API Documentation](https://github.com/orbitdb/ipfs-log/tree/master/API.md) 
 
 - [Log](https://github.com/orbitdb/ipfs-log/tree/master/API.md#log)
   - [Constructor](https://github.com/orbitdb/ipfs-log/tree/master/API.md##constructor)
-    - [new Log(ipfs, [id])](https://github.com/orbitdb/ipfs-log/tree/master/API.md##new-log-ipfs-id)
+    - [new Log(ipfs, identity, [{ logId, access, entries, heads, clock, sortFn }])](https://github.com/orbitdb/ipfs-log/tree/master/API.md##new-log-ipfs-id)
   - [Properties](https://github.com/orbitdb/ipfs-log/tree/master/API.md##properties)
     - [id](https://github.com/orbitdb/ipfs-log/tree/master/API.md##id)
     - [values](https://github.com/orbitdb/ipfs-log/tree/master/API.md##values)
@@ -136,15 +138,14 @@ See [API Documentation](https://github.com/orbitdb/ipfs-log/tree/master/API.md) 
   - [Methods](https://github.com/orbitdb/ipfs-log/tree/master/API.md##methods)
     - [append(data)](https://github.com/orbitdb/ipfs-log/tree/master/API.md##appenddata)
     - [join(log)](https://github.com/orbitdb/ipfs-log/tree/master/API.md##joinlog)
+    - [toCID()](https://github.com/orbitdb/ipfs-log/tree/master/API.md##tocid)
     - [toMultihash()](https://github.com/orbitdb/ipfs-log/tree/master/API.md##tomultihash)
     - [toBuffer()](https://github.com/orbitdb/ipfs-log/tree/master/API.md##tobuffer)
     - [toString()](https://github.com/orbitdb/ipfs-log/tree/master/API.md##toString)
   - [Static Methods](https://github.com/orbitdb/ipfs-log/tree/master/API.md##static-methods)
-    - [Log.expand()]()
-    - [Log.expandFrom()]()
     - [Log.fromEntry()]()
-    - [Log.fromEntryHash()]()
-    - [Log.toMultihash()]()
+    - [Log.fromEntryCid()]()
+    - [Log.fromCID()]()
     - [Log.fromMultihash()]()
 
 ## Tests
@@ -166,7 +167,7 @@ TEST=go mocha
 
 ## Build
 
-Run the following command before you commit. 
+Run the following command before you commit.
 
 ```
 make rebuild

@@ -4,7 +4,7 @@ const Entry = require('./entry')
 const EntryIO = require('./entry-io')
 const Clock = require('./lamport-clock')
 const LogError = require('./log-errors')
-const { isDefined, findUniques, difference, dagNode } = require('./utils')
+const { isDefined, findUniques, difference, io } = require('./utils')
 
 const IPLD_LINKS = ['heads']
 const last = (arr, n) => arr.slice(arr.length - n, arr.length)
@@ -21,7 +21,7 @@ class LogIO {
     if (!isDefined(log)) throw LogError.LogNotDefinedError()
     if (log.values.length < 1) throw new Error(`Can't serialize an empty log`)
 
-    return dagNode.write(ipfs, 'dag-cbor', log.toJSON(), IPLD_LINKS)
+    return io.write(ipfs, 'dag-cbor', log.toJSON(), { links: IPLD_LINKS })
   }
 
   /**
@@ -36,7 +36,7 @@ class LogIO {
     if (!isDefined(log)) throw LogError.LogNotDefinedError()
     if (log.values.length < 1) throw new Error(`Can't serialize an empty log`)
 
-    return dagNode.write(ipfs, 'dag-pb', log.toJSON(), IPLD_LINKS)
+    return io.write(ipfs, 'dag-pb', log.toJSON(), { links: IPLD_LINKS })
   }
 
   /**
@@ -52,7 +52,7 @@ class LogIO {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
     if (!isDefined(cid)) throw new Error(`Invalid CID: ${cid}`)
 
-    const logData = await dagNode.read(ipfs, cid, IPLD_LINKS)
+    const logData = await io.read(ipfs, cid, { links: IPLD_LINKS })
     if (!logData.heads || !logData.id) throw LogError.NotALogError()
 
     const entries = await EntryIO.fetchAll(ipfs, logData.heads,

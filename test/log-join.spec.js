@@ -5,7 +5,6 @@ const rmrf = require('rimraf')
 const Clock = require('../src/lamport-clock')
 const Entry = require('../src/entry')
 const Log = require('../src/log')
-const AccessController = Log.AccessController
 const IdentityProvider = require('orbit-db-identity-provider')
 
 // Test utils
@@ -26,7 +25,6 @@ Object.keys(testAPIs).forEach((IPFS) => {
   describe('Log - Join (' + IPFS + ')', function () {
     this.timeout(config.timeout)
 
-    const testACL = new AccessController()
     const { identityKeysPath, signingKeysPath } = config
     const ipfsConfig = Object.assign({}, config.defaultIpfsConfig, {
       repo: config.defaultIpfsConfig.repo + '-log-join' + new Date().getTime()
@@ -50,10 +48,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
       let log1, log2, log3, log4
 
       beforeEach(async () => {
-        log1 = new Log(ipfs, testACL, testIdentity, { logId: 'X' })
-        log2 = new Log(ipfs, testACL, testIdentity2, { logId: 'X' })
-        log3 = new Log(ipfs, testACL, testIdentity3, { logId: 'X' })
-        log4 = new Log(ipfs, testACL, testIdentity4, { logId: 'X' })
+        log1 = new Log(ipfs, testIdentity, { logId: 'X' })
+        log2 = new Log(ipfs, testIdentity2, { logId: 'X' })
+        log3 = new Log(ipfs, testIdentity3, { logId: 'X' })
+        log4 = new Log(ipfs, testIdentity4, { logId: 'X' })
       })
 
       it('joins logs', async () => {
@@ -75,10 +73,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
         // Here we're creating a log from entries signed by A and B
         // but we accept entries from C too
-        const logA = await Log.fromEntry(ipfs, testACL, testIdentity3, last(items2), -1)
+        const logA = await Log.fromEntry(ipfs, testIdentity3, last(items2), -1)
         // Here we're creating a log from entries signed by peer A, B and C
         // "logA" accepts entries from peer C so we can join logs A and B
-        const logB = await Log.fromEntry(ipfs, testACL, testIdentity3, last(items3), -1)
+        const logB = await Log.fromEntry(ipfs, testIdentity3, last(items3), -1)
         assert.strictEqual(logA.length, items2.length + items1.length)
         assert.strictEqual(logB.length, items3.length + items2.length + items1.length)
 
