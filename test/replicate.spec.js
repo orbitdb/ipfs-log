@@ -19,6 +19,8 @@ const {
   connectPeers
 } = require('orbit-db-test-utils')
 
+if(!process) var process = { stdout: { write: () => {} }}
+
 Object.keys(testAPIs).forEach((IPFS) => {
   describe('ipfs-log - Replication (' + IPFS + ')', function () {
     this.timeout(config.timeout)
