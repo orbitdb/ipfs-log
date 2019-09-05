@@ -41,7 +41,7 @@
     "mocha": "~5.2.0",
     "mocha-headless-chrome": "^2.0.1",
     "orbit-db-storage-adapter": "^0.4.2",
-    "orbit-db-test-utils": "^0.8.0",
+    "orbit-db-test-utils": "^0.8.1",
     "rimraf": "~2.6.1",
     "standard": "~12.0.1",
     "webpack": "~4.28.0",
