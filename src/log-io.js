@@ -2,7 +2,8 @@
 
 const Entry = require('./entry')
 const EntryIO = require('./entry-io')
-const Clock = require('./lamport-clock')
+const Sorting = require('./log-sorting')
+const { LastWriteWins, NoZeroes } = Sorting
 const LogError = require('./log-errors')
 const { isDefined, findUniques, difference, io } = require('./utils')
 
@@ -36,30 +37,26 @@ class LogIO {
    * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
    * @param {function(hash, entry, parent, depth)} options.onProgressCallback
    */
-  static async fromMultihash (ipfs, hash, { length = -1, exclude, onProgressCallback, timeout } = {}) {
+  static async fromMultihash (ipfs, hash,
+    { length = -1, exclude = [], concurrency, sortFn, onProgressCallback }) {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
     if (!isDefined(hash)) throw new Error(`Invalid hash: ${hash}`)
 
     const logData = await io.read(ipfs, hash, { links: IPLD_LINKS })
-    if (!logData.heads || !logData.id) throw LogError.NotALogError()
-    const entries = await EntryIO.fetchAll(ipfs, logData.heads,
-      { length, exclude, onProgressCallback, timeout })
 
-    // Find latest clock
-    const clock = entries.reduce((clock, entry) => {
-      if (entry.clock.time > clock.time) {
-        return new Clock(entry.clock.id, entry.clock.time)
-      }
-      return clock
-    }, new Clock(logData.id))
-    const finalEntries = entries.slice().sort(Entry.compare)
-    const heads = finalEntries.filter(e => logData.heads.includes(e.hash))
-    return {
-      id: logData.id,
-      values: finalEntries,
-      heads: heads,
-      clock: clock
-    }
+    if (!logData.heads || !logData.id) throw LogError.NotALogError()
+
+    // Use user provided sorting function or the default one
+    sortFn = sortFn || NoZeroes(LastWriteWins)
+    const isHead = e => logData.heads.includes(e.hash)
+
+    const all = await EntryIO.fetchAll(ipfs, logData.heads,
+      { length, exclude, concurrency, onProgressCallback })
+
+    const logId = logData.id
+    const entries = length > -1 ? last(all.sort(sortFn), length) : all
+    const heads = entries.filter(isHead)
+    return { logId, entries, heads }
   }
 
   /**
@@ -70,25 +67,21 @@ class LogIO {
    * @param {number} options.length How many items to include in the log
    * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
    * @param {function(hash, entry, parent, depth)} options.onProgressCallback
-   * @param {number} options.timeout Timeout for fetching a log entry from IPFS
    */
-  static async fromEntryHash (ipfs, hash, { length = -1, exclude, onProgressCallback, timeout }) {
+  static async fromEntryHash (ipfs, hash,
+    { length = -1, exclude = [], concurrency, onProgressCallback }) {
     if (!isDefined(ipfs)) throw LogError.IpfsNotDefinedError()
     if (!isDefined(hash)) throw new Error("'hash' must be defined")
     // Convert input hash(s) to an array
     const hashes = Array.isArray(hash) ? hash : [hash]
     // Fetch given length, return size at least the given input entries
     length = length > -1 ? Math.max(length, 1) : length
-
-    const entries = await EntryIO.fetchParallel(ipfs, hashes,
-      { length, exclude, onProgressCallback, timeout, concurrency: 128 })
+    const all = await EntryIO.fetchParallel(ipfs, hashes,
+      { length, exclude, concurrency, onProgressCallback })
     // Cap the result at the right size by taking the last n entries,
     // or if given length is -1, then take all
-    const sliced = length > -1 ? last(entries, length) : entries
-    // console.log(">>>", sliced.length)
-    return {
-      values: sliced
-    }
+    const entries = length > -1 ? last(all, length) : all
+    return { entries }
   }
 
   /**
@@ -98,20 +91,16 @@ class LogIO {
    * @param {json} json A json object containing valid log data
    * @param {Object} options
    * @param {number} options.length How many entries to include
-   * @param {number} options.timeout Maximum time to wait for each fetch operation, in ms
    * @param {function(hash, entry, parent, depth)} options.onProgressCallback
    **/
-  static async fromJSON (ipfs, json, { length = -1, timeout, onProgressCallback }) {
+  static async fromJSON (ipfs, json, { length = -1, concurrency, onProgressCallback }) {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
-    const headHashes = json.heads.map(e => e.hash)
-    const entries = await EntryIO.fetchParallel(ipfs, headHashes,
-      { length, exclude: [], concurrency: 16, timeout, onProgressCallback })
-    const finalEntries = entries.slice().sort(Entry.compare)
-    return {
-      id: json.id,
-      values: finalEntries,
-      heads: json.heads
-    }
+    const { id, heads } = json
+    const headHashes = heads.map(e => e.hash)
+    const all = await EntryIO.fetchParallel(ipfs, headHashes,
+      { length, concurrency, onProgressCallback })
+    const entries = all.sort(Entry.compare)
+    return { logId: id, entries, heads }
   }
 
   /**
@@ -123,7 +112,8 @@ class LogIO {
    * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
    * @param {function(hash, entry, parent, depth)} options.onProgressCallback
    */
-  static async fromEntry (ipfs, sourceEntries, { length = -1, exclude, onProgressCallback, timeout }) {
+  static async fromEntry (ipfs, sourceEntries,
+    { length = -1, exclude = [], concurrency, onProgressCallback }) {
     if (!isDefined(ipfs)) throw LogError.IPFSNotDefinedError()
     if (!isDefined(sourceEntries)) throw new Error("'sourceEntries' must be defined")
 
@@ -143,11 +133,11 @@ class LogIO {
     const hashes = sourceEntries.map(e => e.hash)
 
     // Fetch the entries
-    const entries = await EntryIO.fetchParallel(ipfs, hashes,
-      { length, exclude, onProgressCallback, timeout, concurrency: 64 })
+    const all = await EntryIO.fetchParallel(ipfs, hashes,
+      { length, exclude, concurrency, onProgressCallback })
 
     // Combine the fetches with the source entries and take only uniques
-    const combined = sourceEntries.concat(entries)
+    const combined = sourceEntries.concat(all).concat(exclude)
     const uniques = findUniques(combined, 'hash').sort(Entry.compare)
 
     // Cap the result at the right size by taking the last n entries
@@ -164,11 +154,9 @@ class LogIO {
 
     // Add the input entries at the beginning of the array and remove
     // as many elements from the array before inserting the original entries
-    const result = replaceInFront(sliced, missingSourceEntries)
-    return {
-      id: result[result.length - 1].id,
-      values: result
-    }
+    const entries = replaceInFront(sliced, missingSourceEntries)
+    const logId = entries[entries.length - 1].id
+    return { logId, entries }
   }
 }
 

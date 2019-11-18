@@ -67,19 +67,19 @@
       <button id="startButton">Load!</button>
     </div>
     <h1>ipfs-log</h1>
-    <h2>loading simulation</h2>
+    <h2>loading visualization</h2>
     <a href="https://github.com/orbitdb/ipfs-log">https://github.com/orbitdb/ipfs-log</a>
     <div id="log">
       <svg id="log-svg" width=10000 height=4 shape-rendering="optimizeSpeed">
         <rect id="totalPercentage"></rect>
+        <g id="loadProgressPercentage"></g>
         <rect id="createProgressPercentage"></rect>
-        <rect id="loadProgressPercentage"></rect>
       </svg>
     </div>
     <pre id="output-create"></pre>
     <pre id="output-load"></pre>
     <script type="text/javascript" src="bundle.js" charset="utf-8"></script>
-    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
 
     <script>
       const outputLoadingElm = document.getElementById('output-load')
@@ -167,36 +167,33 @@
           const hash = await log.append('hello' + i, refCount)
           if (i % 10 === 0) {
             await onLogCreateUpdated(log, i, hash)
-            // if (delay > 0)
-            //   await sleep(1)
           }
         }
 
         const lt2 = new Date().getTime()
         setTimeout(() => {
-          // outputElm.innerHTML += "Creating took: " + (lt2 - st) + " ms"
           outputElm.innerHTML = `Creating a log... ${count} / ${count} (${(lt2 - st)} ms)`
         }, 100)
-        // outputLoadingElm.innerHTML += "Creating took: " + (lt2 - st) + " ms"
 
-        // outputLoadingElm.innerHTML = "Loading a log..."
         window.onLogCreated()
+
         const lt1 = new Date().getTime()
         const result = await EntryIO.fetchAll(
-          ipfs, 
+          ipfs,
           log.heads.map(e => e.hash),
           {
             length: -1,
             exclude: [],
             timeout: 20000,
             onProgressCallback: window.onDataUpdated,
-            concurrency: null
+            onStartProgressCallback: null,
+            concurrency,
+            delay
           }
         )
         const et = new Date().getTime()
         setTimeout(() => {
           outputLoadingElm.innerHTML = "Loading a log...  " + result.length + " / " + log.length + " (" + (et - lt1) + " ms)<br>"
-          // outputLoadingElm.innerHTML += "<br>Loading took: " + (et - lt1) + " ms<br>"
           outputLoadingElm.innerHTML += "Duration: " + (et - st) + " ms<br>"
           startButtonElm.addEventListener('click', run)
           startButtonElm.disabled = false
@@ -210,9 +207,13 @@
       const margin = 0
 
       let svgContainer
+      let data = Array(count).fill(0)
 
       const resetRendering = async () => {
+        logLength = 0
+        data = []
         const w = logElm.clientWidth
+
         svgContainer = d3.select("#log-svg")
           .attr("width", w)
           .attr("height", sizeY)
@@ -222,73 +223,73 @@
           .attr("width", w)
           .style("fill", "rgb(228, 228, 228)")
 
-        svgContainer.select("#createProgressPercentage")
-          .attr("width", 0)
         svgContainer.select("#loadProgressPercentage")
-          .attr("width", 0)
+          .selectAll("rect")
+          .remove()
 
-        return new Promise((resolve) => {
-          setTimeout(() => resolve(), 0)
-        })
+        return new Promise((resolve) => setTimeout(resolve, 0))
       }
 
       window.onresize = (event) => {
         sizeX = logElm.clientWidth / count
       }
 
-      let _renderIndex = {}
-      let circleElements = []
-      let d = new Array(count)
-
-      let loadProgressRenderInterval
       let createProgressRenderInterval
 
       let logLength = 0
       window.onLogCreateUpdated = (log, progress, entry) => {
         logLength = progress
-        return new Promise((resolve) => {
-          setTimeout(() => resolve(), 0)
-        })
+          outputElm.innerHTML = "Creating a log... " + logLength + " / " + count + "<br>"
+
+          svgContainer.select("#createProgressPercentage")
+            .attr("height", sizeY)
+            .attr("width", (logLength / (count / logElm.clientWidth)))
+            .style("fill", "rgba(164, 164, 164)")
+
+        return new Promise((resolve) => setTimeout(resolve, 0))
       }
 
       window.onLogCreationStarted = () => {
-        createProgressRenderInterval = setInterval(() => {
-            outputElm.innerHTML = "Creating a log... " + logLength + " / " + count + "<br>"
-
-            svgContainer.select("#createProgressPercentage")
-              .attr("height", sizeY)
-              .attr("width", (logLength / (count / logElm.clientWidth)))
-              .style("fill", "rgba(112, 164, 112)")
-
-            if (logLength === count) {
-              clearInterval(createProgressRenderInterval)
-              return
-            }
-        }, 100)
+        logLength = 0
       }
 
       let loadLength = 0
       window.onDataUpdated = (hash, entry, resultLength, result, queue) => {
         loadLength = resultLength
-        return new Promise((resolve) => {
-          setTimeout(() => resolve(), 0)
-        })
+        data[data.length - entry.clock.time] = 1
+
+        const w = logElm.clientWidth
+        count = parseInt(countElm.value)
+
+        svgContainer.select("#loadProgressPercentage")
+          .selectAll("rect")
+          .data(data)
+          .join(
+            enter => enter.append("rect")
+              .attr("x", (d, i) => i * (w / count))
+              .attr("width", (w / count))
+              .attr("height", sizeY)
+              .style("fill", "rgb(164, 164, 164)"),
+            update => update
+              .attr("x", (d, i) => i * (w / count))
+              .attr("width", (w / count))
+              .style("fill", d => d === 0 ? "rgb(164, 164, 164)" : "rgb(112, 228, 112)"),
+            exit => exit
+              .remove(),
+          )
+
+        outputLoadingElm.innerHTML = "Loading a log...  " + loadLength + " / " + count
+
+        return new Promise((resolve) => setTimeout(resolve, 0))
       }
 
       window.onLogCreated = () => {
-        loadProgressRenderInterval = setInterval(() => {
-          outputLoadingElm.innerHTML = "Loading a log...  " + loadLength + " / " + count
+        svgContainer.select("#createProgressPercentage")
+          .attr("width", 0)
+          .attr("height", 0)
 
-          svgContainer.select("#loadProgressPercentage")
-            .attr("height", sizeY)
-            .attr("width", (loadLength / (count / logElm.clientWidth)))
-            .style("fill", "rgb(112, 228, 112)")
-
-          if (loadLength === count) {
-            clearInterval(loadProgressRenderInterval)
-            return
-          }
-        }, 100)
+        count = parseInt(countElm.value)
+        data = Array(count).fill(0)
       }
     </script>
   </body>

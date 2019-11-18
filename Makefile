@@ -15,6 +15,7 @@ build: test
 clean:
 	rm -rf ipfs/
 	rm -rf ipfs-log-benchmarks/
+	rm -rf orbitdb/
 	rm -rf node_modules/
 	rm -rf coverage/
 	rm -rf test/keystore/

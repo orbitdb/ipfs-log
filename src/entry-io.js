@@ -4,18 +4,21 @@ const pMap = require('p-map')
 const pDoWhilst = require('p-do-whilst')
 const Entry = require('./entry')
 
+const hasItems = arr => arr && arr.length > 0
+
 class EntryIO {
   // Fetch log graphs in parallel
-  static fetchParallel (ipfs, hashes, { length, exclude = [], concurrency, timeout, onProgressCallback }) {
-    const fetchOne = (hash) => EntryIO.fetchAll(ipfs, hash, length, exclude, timeout, onProgressCallback)
+  static async fetchParallel (ipfs, hashes, { length, exclude = [], concurrency, onProgressCallback }) {
+    concurrency = Math.max(concurrency || hashes.length, 1)
+    const fetchOne = async (hash) => EntryIO.fetchAll(ipfs, hash, { length, exclude, onProgressCallback, concurrency })
     const concatArrays = (arr1, arr2) => arr1.concat(arr2)
     const flatten = (arr) => arr.reduce(concatArrays, [])
-    return pMap(hashes, fetchOne, { concurrency: Math.max(concurrency || hashes.length, 1) })
-      .then(flatten) // Flatten the results
+    const res = await pMap(hashes, fetchOne, { concurrency })
+    return flatten(res)
   }
 
   /**
-   * Fetch log entries sequentially
+   * Fetch log entries
    *
    * @param {IPFS} [ipfs] An IPFS instance
    * @param {string} [hash] Multihash of the entry to fetch
@@ -26,13 +29,20 @@ class EntryIO {
    * @param {function(hash, entry, parent, depth)} onProgressCallback
    * @returns {Promise<Array<Entry>>}
    */
-  static async fetchAll (ipfs, hashes, { length = -1, exclude = [], timeout = null, onProgressCallback, onStartProgressCallback, concurrency = 32, delay = 0 } = {}) {
+  static async fetchAll (ipfs, hashes, { length = -1, exclude = [], onProgressCallback, onStartProgressCallback, concurrency = 32, delay = 0 } = {}) {
     let result = []
     let cache = {}
     let loadingCache = {}
     let loadingQueue = Array.isArray(hashes)
       ? { 0: hashes.slice() }
       : { 0: [hashes] }
+    let running = 0 // keep track of how many entries are being fetched at any time
+    let maxClock = 0 // keep track of the latest clock time during load
+    let minClock = 0 // keep track of the minimum clock time during load
+
+    // Does the loading queue have more to process?
+    const loadingQueueHasMore = () => Object.values(loadingQueue).find(hasItems) !== undefined
+
     // Add a multihash to the loading queue
     const addToLoadingQueue = (e, idx) => {
       if (!loadingCache[e]) {
@@ -40,107 +50,111 @@ class EntryIO {
         if (!loadingQueue[idx].includes(e)) {
           loadingQueue[idx].push(e)
         }
-        loadingCache[e] = idx
+        loadingCache[e] = true
       }
+    }
+
+    // Get the next items to process from the loading queue
+    const getNextFromQueue = (length = 1) => {
+      const getNext = (res, key, idx) => {
+        const nextItems = loadingQueue[key]
+        while (nextItems.length > 0 && res.length < length) {
+          const hash = nextItems.shift()
+          res.push(hash)
+        }
+        if (nextItems.length === 0) {
+          delete loadingQueue[key]
+        }
+        return res
+      }
+      return Object.keys(loadingQueue).reduce(getNext, [])
     }
 
     // Add entries that we don't need to fetch to the "cache"
-    const addToExcludeCache = e => { cache[e.hash] = e }
-    exclude.forEach(addToExcludeCache)
+    const addToExcludeCache = e => { cache[e.hash] = true }
 
-    const loadingQueueHasMore = () => Object.values(loadingQueue)
-      .find(e => e && e.length > 0) !== undefined
-
-    const shouldFetchMore = () => {
-      return loadingQueueHasMore() &&
-          (result.length < length || length < 0)
-    }
-
-    const getNextFromQueue = (length = 1) => {
-      const all = Object.values(loadingQueue).reduce((res, acc) => {
-        while (acc.length > 0 && res.length < length) {
-          const e = acc.shift()
-          res.push(e)
-        }
-        return res
-      }, [])
-      return all
-    }
-
-    const fetchEntry = (hash) => {
+    // Fetch one entry and add it to the results
+    const fetchEntry = async (hash) => {
       if (!hash || cache[hash]) {
-        return Promise.resolve()
+        return
       }
 
-      return new Promise((resolve, reject) => {
-        // Resolve the promise after a timeout (if given) in order to
-        // not get stuck loading a block that is unreachable
-        // const timer = timeout
-        // ? setTimeout(() => {
-        //     console.warn(`Warning: Couldn't fetch entry '${hash}', request timed out (${timeout}ms)`)
-        //     resolve()
-        //   } , timeout)
-        // : null
+      const addToResults = (entry) => {
+        if (Entry.isEntry(entry)) {
+          const ts = entry.clock.time
 
-        const sleep = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms))
+          // Update min/max clocks
+          maxClock = Math.max(maxClock, ts)
+          minClock = result.length > 0
+            ? Math.min(result[result.length - 1].clock.time, minClock)
+            : maxClock
 
-        const addToResults = (entry) => {
-          // clearTimeout(timer)
-          if (Entry.isEntry(entry)) {
-            try {
-              entry.next.forEach(addToLoadingQueue)
-              entry.refs.forEach(addToLoadingQueue)
+          const isLater = (result.length >= length && ts >= minClock)
+          const calculateIndex = (idx) => maxClock - ts + ((idx + 1) * idx)
 
-              result.push(entry)
-              cache[hash] = entry
-              if (onProgressCallback) {
-                onProgressCallback(hash, entry, result.length, result, loadingQueue)
-              }
-            } catch (e) {
-              console.error(e)
+          // Add the entry to the results if
+          // 1) we're fetching all entries
+          // 2) results is not filled yet
+          // the clock of the entry is later than current known minimum clock time
+          if (length < 0 || result.length < length || isLater) {
+            result.push(entry)
+            cache[hash] = true
+          }
+
+          if (length < 0) {
+            // If we're fetching all entries (length === -1), adds nexts and refs to the queue
+            entry.next.forEach(addToLoadingQueue)
+            entry.refs.forEach(addToLoadingQueue)
+          } else {
+            // If we're fetching entries up to certain length,
+            // fetch the next if result is filled up, to make sure we "check"
+            // the next entry if its clock is later than what we have in the result
+            if (result.length <= length || ts >= minClock) {
+              entry.next.forEach(e => addToLoadingQueue(e, calculateIndex(0)))
+            }
+            if ((result.length + entry.refs.length) <= length) {
+              entry.refs.forEach((e, i) => addToLoadingQueue(e, calculateIndex(i)))
             }
           }
         }
+      }
 
-        if (onStartProgressCallback) {
-          onStartProgressCallback(hash, null, result.length, result, loadingQueue)
-        }
+      if (onStartProgressCallback) {
+        onStartProgressCallback(hash, null, result.length, result, loadingQueue)
+      }
 
-        // Load the entry
-        Entry.fromMultihash(ipfs, hash)
-          .then(addToResults)
-          .then(async (entry) => {
-            // Simulate network latency
-            if (delay > 0) { await sleep(delay) }
+      // Load the entry
+      const entry = await Entry.fromMultihash(ipfs, hash)
 
-            return entry
-          })
-          .then(resolve)
-          .catch(err => {
-            reject(err)
-          })
-      })
+      // Add it to the results
+      addToResults(entry)
+
+      if (onProgressCallback) {
+        onProgressCallback(hash, entry, result.length, result, loadingQueue)
+      }
+
+      // Simulate network latency (for debugging purposes)
+      if (delay > 0) {
+        const sleep = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms))
+        await sleep(delay)
+      }
     }
 
-    let running = 0
+    // One loop of processing the loading queue
     const _processQueue = async () => {
       if (running < concurrency) {
-        let nexts = getNextFromQueue(concurrency)
-        if (result.length + nexts.length > length && !(length < 0)) {
-          nexts = nexts.slice(0, length - result.length) // trim nexts to match length
-        }
+        const nexts = getNextFromQueue(concurrency)
         running += nexts.length
         await pMap(nexts, fetchEntry)
         running -= nexts.length
       }
     }
 
-    await pDoWhilst(async () => _processQueue(), shouldFetchMore)
+    // Add entries to exclude from processing to the cache before we start
+    exclude.forEach(addToExcludeCache)
 
-    // Free memory to avoid minor GC
-    cache = {}
-    loadingCache = {}
-    loadingQueue = []
+    // Fetch entries
+    await pDoWhilst(_processQueue, loadingQueueHasMore)
 
     return result
   }

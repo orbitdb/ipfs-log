@@ -56,7 +56,7 @@ let run = (() => {
     // const memstore = new MemStore()
     // ipfs.dag.put = memstore.put.bind(memstore)
     // ipfs.dag.get = memstore.get.bind(memstore)
-    const signingKeysPath = './benchmarks/ipfs-log-benchmarks/keys1'
+    const signingKeysPath = './test/fixtures/keys/signing-keys'
     const store = await storage.createStore(signingKeysPath)
     const keystore = new Keystore(store)
     const identity = await IdentityProvider.createIdentity({ id: 'userA', keystore })

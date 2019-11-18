@@ -673,7 +673,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         let res = await Log.fromMultihash(ipfs, testIdentity2, hash, { length: 5 })
 
         const first5 = [
-          'entryA5', 'entryB5', 'entryC0', 'entryA9', 'entryA10'
+          'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10'
         ]
 
         assert.deepStrictEqual(res.values.map(e => e.payload), first5)
@@ -682,10 +682,10 @@ Object.keys(testAPIs).forEach((IPFS) => {
         res = await Log.fromMultihash(ipfs, testIdentity2, hash, { length: 11 })
 
         const first11 = [
-          'entryA3', 'entryB3', 'entryA4', 'entryB4',
+          'entryB3', 'entryA4', 'entryB4',
           'entryA5', 'entryB5',
-          'entryC0',
-          'entryA7', 'entryA8', 'entryA9', 'entryA10'
+          'entryA6',
+          'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10'
         ]
 
         assert.deepStrictEqual(res.values.map(e => e.payload), first11)
@@ -694,7 +694,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         res = await Log.fromMultihash(ipfs, testIdentity2, hash, { length: 16 - 1 })
 
         const all = [
-          'entryA1', /* excl */ 'entryA2', 'entryB2', 'entryA3', 'entryB3',
+          /* excl */ 'entryB1', 'entryA2', 'entryB2', 'entryA3', 'entryB3',
           'entryA4', 'entryB4', 'entryA5', 'entryB5',
           'entryA6',
           'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10'
@@ -746,8 +746,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
         res = await Log.fromMultihash(ipfs, testIdentity2, hash, { length: 11 })
 
         const first11 = [
-          'entryA1', 'entryA2', 'entryA3', 'entryA4',
-          'entryA5', 'entryA6',
+          'entryB3', 'entryA4', 'entryB4', 'entryA5',
+          'entryB5', 'entryA6',
           'entryC0',
           'entryA7', 'entryA8', 'entryA9', 'entryA10'
         ]
@@ -758,7 +758,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         res = await Log.fromMultihash(ipfs, testIdentity2, hash, { length: 16 - 1 })
 
         const all = [
-          'entryA1', /* excl */ 'entryA2', 'entryB2', 'entryA3', 'entryB3',
+          /* excl */ 'entryB1', 'entryA2', 'entryB2', 'entryA3', 'entryB3',
           'entryA4', 'entryB4', 'entryA5', 'entryB5',
           'entryA6',
           'entryC0', 'entryA7', 'entryA8', 'entryA9', 'entryA10'

@@ -2,6 +2,7 @@ node_modules/
 coverage/
 ipfs/
 ipfs-log/
+orbitdb/
 dist/*.js.map
 examples/browser/bundle.js
 test/keystore/

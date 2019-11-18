@@ -72,7 +72,7 @@
   "scripts": {
     "test": "TEST=all mocha",
     "test:coverage": "istanbul cover -x src/g-set.js _mocha",
-    "test:browser": "npm run build:tests && mocha-headless-chrome -t 240000 -f ./test/browser/index.html -a no-sandbox",
+    "test:browser": "npm run build:tests && mocha-headless-chrome -t 360000 -f ./test/browser/index.html -a no-sandbox",
     "build": "npm run build:es5 && npm run build:examples && npm run build:dist",
     "build:tests": "webpack --config webpack.tests.config.js --mode production",
     "build:examples": "webpack --config webpack.example.config.js --sort-modules-by size --mode production",

@@ -9,6 +9,7 @@ const Keystore = require('orbit-db-keystore')
 
 const leveldown = require('leveldown')
 const storage = require('orbit-db-storage-adapter')(leveldown)
+
 // State
 let ipfs
 let log1, log2
@@ -60,14 +61,11 @@ let run = (() => {
     // ipfs.dag.put = memstore.put.bind(memstore)
     // ipfs.dag.get = memstore.get.bind(memstore)
 
-    const signingKeysPath1 = './benchmarks/ipfs-log-benchmarks/keys1'
-    const signingKeysPath2 = './benchmarks/ipfs-log-benchmarks/keys2'
-    const store1 = await storage.createStore(signingKeysPath1)
-    const store2 = await storage.createStore(signingKeysPath2)
-    const keystore1 = new Keystore(store1)
-    const keystore2 = new Keystore(store2)
-    const identity = await IdentityProvider.createIdentity({ id: 'userA', keystore: keystore1 })
-    const identity2 = await IdentityProvider.createIdentity({ id: 'userB', keystore: keystore2 })
+    const signingKeysPath = './test/fixtures/keys/signing-keys'
+    const store = await storage.createStore(signingKeysPath)
+    const keystore = new Keystore(store)
+    const identity = await IdentityProvider.createIdentity({ id: 'userA', keystore })
+    const identity2 = await IdentityProvider.createIdentity({ id: 'userB', keystore })
 
     log1 = new Log(ipfs, identity, { logId: 'A' })
     log2 = new Log(ipfs, identity2, { logId: 'A' })
@@ -97,7 +95,7 @@ let run = (() => {
     console.log('Entry size:', Buffer.from(JSON.stringify(l2.heads)).length, 'bytes')
     // console.log(log2.heads)
     console.log('log length:', log2.values.length)
-    console.log(log2.values.map(e => e.payload))
+    // console.log(log2.values.map(e => e.payload))
   })
 })()
 

@@ -194,69 +194,6 @@ class Log extends GSet {
     return this._entryIndex.get(entry.hash || entry) !== undefined
   }
 
-  getNextAndTraverse (rootEntries, amount) {
-    let stack = rootEntries
-    // .map(getFirstNextPointer)
-    // .map(e => this.get(e))
-    // .filter(isDefined)
-
-    // Cache for checking if we've processed an entry already
-    let traversed = {}
-    // End result
-    let result = {}
-    // We keep a counter to check if we have traversed requested amount of entries
-    let count = 0
-
-    // Named function for getting an entry from the log
-    const getEntry = e => this.get(e)
-
-    // Add an entry to the stack and traversed nodes index
-    const addToStack = entry => {
-      // If we've already processed the entry, don't add it to the stack
-      if (!entry || traversed[entry.hash]) {
-        return
-      }
-
-      // Add the entry in front of the stack and sort
-      stack = [entry, ...stack]
-        .sort(this._sortFn)
-        .reverse()
-        // Add to the cache of processed entries
-      traversed[entry.hash] = true
-    }
-
-    const addEntry = rootEntry => {
-      result[rootEntry.hash] = rootEntry
-      traversed[rootEntry.hash] = true
-      count++
-    }
-
-    // rootEntries.forEach(addEntry)
-
-    // Start traversal
-    // Process stack until it's empty (traversed the full log)
-    // or when we have the requested amount of entries
-    // If requested entry amount is -1, traverse all
-    while (stack.length > 0 && (count < amount || amount < 0)) { // eslint-disable-line no-unmodified-loop-condition
-      // Get the next element from the stack
-      const entry = stack.shift()
-
-      // Add to the result
-      // result[entry.hash] = entry
-      addEntry(entry)
-      // if ((amount !== -1) && (++count >= amount)) break
-
-      // Add entry's next references to the stack
-      const entries = entry.next.map(getEntry)
-      const defined = entries.filter(isDefined)
-      defined.forEach(addToStack)
-    }
-
-    stack = []
-    traversed = {}
-    return result
-  }
-
   traverse (rootEntries, amount = -1, endHash) {
     // Sort the given given root entries and use as the starting stack
     let stack = rootEntries.sort(this._sortFn).reverse()
@@ -324,37 +261,32 @@ class Log extends GSet {
     const newTime = Math.max(this.clock.time, this.heads.reduce(maxClockTimeReducer, 0)) + 1
     this._clock = new Clock(this.clock.id, newTime)
 
-    const heads = this.traverse(this.heads, this.heads.length)
-
-    const sortedHeadIndex = this.heads.reverse().reduce(uniqueEntriesReducer, {})
-    const nexts = Object.keys(Object.assign({}, sortedHeadIndex, heads))
-    const all = Object.values(this.getNextAndTraverse(this.heads, pointerCount))
-    const getEveryPow2 = (maxDistance) => {
-      let entries = new Set()
-      for (let i = 1; i <= maxDistance; i *= 2) {
-        const index = Math.min(i - 1, all.length - 1)
-        const ref = all[index]
-        entries.add(ref)
-      }
-
-      return entries
-    }
+    const all = Object.values(this.traverse(this.heads, pointerCount))
 
     // If pointer count is 4, returns 2
     // If pointer count is 8, returns 3 references
     // If pointer count is 512, returns 9 references
     // If pointer count is 2048, returns 11 references
+    const getEveryPow2 = (maxDistance) => {
+      let entries = new Set()
+      for (let i = 1; i <= maxDistance; i *= 2) {
+        const index = Math.min(i - 1, all.length - 1)
+        entries.add(all[index])
+      }
+      return entries
+    }
     const references = getEveryPow2(Math.min(pointerCount, all.length))
-    let refSet = new Set(references)
 
     // Always include the last known reference
     if (all.length < pointerCount && all[all.length - 1]) {
-      refSet.add(all[all.length - 1])
+      references.add(all[all.length - 1])
     }
 
-    // Delete the heads from the refs
+    // Create the next pointers from heads
+    const nexts = Object.keys(this.heads.reverse().reduce(uniqueEntriesReducer, {}))
     const isNext = e => !nexts.includes(e)
-    const refs = Array.from(refSet).map(getHash).filter(isNext)
+    // Delete the heads from the refs
+    const refs = Array.from(references).map(getHash).filter(isNext)
 
     // @TODO: Split Entry.create into creating object, checking permission, signing and then posting to IPFS
     // Create the entry and add it to the internal cache
@@ -594,7 +526,7 @@ class Log extends GSet {
 
   /**
    * Get the log's multihash.
-   * @returns {Promise<string>} Multihash of the Log as Base58 encoded stringx
+   * @returns {Promise<string>} Multihash of the Log as Base58 encoded string.
    */
   toMultihash ({ format } = {}) {
     return LogIO.toMultihash(this._storage, this, { format })
@@ -614,17 +546,11 @@ class Log extends GSet {
    * @returns {Promise<Log>}
    */
   static async fromMultihash (ipfs, identity, hash,
-    { access, length = -1, exclude, onProgressCallback, sortFn, timeout, format } = {}) {
+    { access, length = -1, exclude = [], concurrency, sortFn, onProgressCallback } = {}) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromMultihash(ipfs, hash, { length, exclude, onProgressCallback, timeout, format })
-    return new Log(ipfs, identity, {
-      logId: data.id,
-      access: access,
-      entries: data.values,
-      heads: data.heads,
-      clock: new Clock(data.clock.id, data.clock.time),
-      sortFn: sortFn
-    })
+    const { logId, entries, heads } = await LogIO.fromMultihash(ipfs, hash,
+      { length, exclude, onProgressCallback, concurrency, sortFn })
+    return new Log(ipfs, identity, { logId, access, entries, heads, sortFn })
   }
 
   /**
@@ -639,14 +565,14 @@ class Log extends GSet {
    * @param {Array<Entry>} options.exclude Entries to not fetch (cached)
    * @param {function(hash, entry, parent, depth)} options.onProgressCallback
    * @param {Function} options.sortFn The sort function - by default LastWriteWins
-   * @param {number} options.timeout Timeout for fetching a log entry from IPFS
    * @return {Promise<Log>} New Log
    */
   static async fromEntryHash (ipfs, identity, hash,
-    { logId, access, length = -1, exclude, onProgressCallback, sortFn, timeout }) {
+    { logId, access, length = -1, exclude = [], concurrency, sortFn, onProgressCallback } = {}) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromEntryHash(ipfs, hash, { length, exclude, onProgressCallback, timeout })
-    return new Log(ipfs, identity, { logId, access, entries: data.values, sortFn })
+    const { entries } = await LogIO.fromEntryHash(ipfs, hash,
+      { length, exclude, concurrency, onProgressCallback })
+    return new Log(ipfs, identity, { logId, access, entries, sortFn })
   }
 
   /**
@@ -657,16 +583,15 @@ class Log extends GSet {
    * @param {Object} options
    * @param {AccessController} options.access The access controller instance
    * @param {number} options.length How many entries to include in the log
-   * @param {number} options.timeout Maximum time to wait for each fetch operation, in ms
    * @param {function(hash, entry, parent, depth)} [options.onProgressCallback]
    * @param {Function} options.sortFn The sort function - by default LastWriteWins
    * @return {Promise<Log>} New Log
    */
   static async fromJSON (ipfs, identity, json,
-    { access, length = -1, timeout, onProgressCallback, sortFn } = {}) {
+    { access, length = -1, sortFn, onProgressCallback } = {}) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromJSON(ipfs, json, { length, timeout, onProgressCallback })
-    return new Log(ipfs, identity, { logId: data.id, access, entries: data.values, sortFn })
+    const { logId, entries } = await LogIO.fromJSON(ipfs, json, { length, onProgressCallback })
+    return new Log(ipfs, identity, { logId, access, entries, sortFn })
   }
 
   /**
@@ -683,11 +608,11 @@ class Log extends GSet {
    * @return {Promise<Log>} New Log
    */
   static async fromEntry (ipfs, identity, sourceEntries,
-    { access, length = -1, exclude, onProgressCallback, timeout, sortFn } = {}) {
+    { access, length = -1, exclude = [], concurrency, sortFn, onProgressCallback } = {}) {
     // TODO: need to verify the entries with 'key'
-    const data = await LogIO.fromEntry(ipfs, sourceEntries,
-      { length, exclude, onProgressCallback, timeout })
-    return new Log(ipfs, identity, { logId: data.id, access, entries: data.values, sortFn })
+    const { logId, entries } = await LogIO.fromEntry(ipfs, sourceEntries,
+      { length, exclude, concurrency, onProgressCallback })
+    return new Log(ipfs, identity, { logId, access, entries, sortFn })
   }
 
   /**
