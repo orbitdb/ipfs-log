@@ -114,11 +114,12 @@ class EntryIO {
                 onProgressCallback(hash, entry, result.length, result.length)
               }
             }
+            if (!entry.refs) entry.refs = []
 
             if (length < 0) {
               // If we're fetching all entries (length === -1), adds nexts and refs to the queue
               entry.next.forEach(addToLoadingQueue)
-              if (entry.refs) entry.refs.forEach(addToLoadingQueue)
+              entry.refs.forEach(addToLoadingQueue)
             } else {
               // If we're fetching entries up to certain length,
               // fetch the next if result is filled up, to make sure we "check"
