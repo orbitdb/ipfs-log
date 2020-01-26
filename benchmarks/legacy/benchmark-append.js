@@ -3,7 +3,7 @@
 const IPFS = require('ipfs')
 const IPFSRepo = require('ipfs-repo')
 const DatastoreLevel = require('datastore-level')
-const Log = require('../src/log')
+const Log = require('../../src/log')
 const IdentityProvider = require('orbit-db-identity-provider')
 const Keystore = require('orbit-db-keystore')
 
@@ -25,7 +25,7 @@ const queryLoop = async () => {
   setImmediate(queryLoop)
 }
 
-const run = (() => {
+const run = (async () => {
   console.log('Starting benchmark...')
 
   const repoConf = {
@@ -34,44 +34,34 @@ const run = (() => {
     }
   }
 
-  ipfs = new IPFS({
+  ipfs = await IPFS.create({
     repo: new IPFSRepo('./ipfs-log-benchmarks/ipfs', repoConf),
-    start: false,
-    EXPERIMENTAL: {
-      pubsub: false,
-      sharding: false,
-      dht: false
+    init: true,
+    start: false
+  })
+
+  // Use memory store to test without disk IO
+  // const memstore = new MemStore()
+  // ipfs.dag.put = memstore.put.bind(memstore)
+  // ipfs.dag.get = memstore.get.bind(memstore)
+  const keystore = new Keystore('./ipfs-log-benchmarks/keys/')
+  const identity = await IdentityProvider.createIdentity({ id: 'userA', keystore })
+
+  log = new Log(ipfs, identity, { logId: 'A' })
+
+  // Output metrics at 1 second interval
+  setInterval(() => {
+    seconds++
+    if (seconds % 10 === 0) {
+      console.log(`--> Average of ${lastTenSeconds / 10} q/s in the last 10 seconds`)
+      if (lastTenSeconds === 0) throw new Error('Problems!')
+      lastTenSeconds = 0
     }
-  })
+    console.log(`${queriesPerSecond} queries per second, ${totalQueries} queries in ${seconds} seconds (Entry count: ${log.values.length})`)
+    queriesPerSecond = 0
+  }, 1000)
 
-  ipfs.on('error', (err) => {
-    console.error(err)
-  })
-
-  ipfs.on('ready', async () => {
-    // Use memory store to test without disk IO
-    // const memstore = new MemStore()
-    // ipfs.dag.put = memstore.put.bind(memstore)
-    // ipfs.dag.get = memstore.get.bind(memstore)
-    const keystore = new Keystore('./ipfs-log-benchmarks/keys/')
-    const identity = await IdentityProvider.createIdentity({ id: 'userA', keystore })
-
-    log = new Log(ipfs, identity, { logId: 'A' })
-
-    // Output metrics at 1 second interval
-    setInterval(() => {
-      seconds++
-      if (seconds % 10 === 0) {
-        console.log(`--> Average of ${lastTenSeconds / 10} q/s in the last 10 seconds`)
-        if (lastTenSeconds === 0) throw new Error('Problems!')
-        lastTenSeconds = 0
-      }
-      console.log(`${queriesPerSecond} queries per second, ${totalQueries} queries in ${seconds} seconds (Entry count: ${log.values.length})`)
-      queriesPerSecond = 0
-    }, 1000)
-
-    setImmediate(queryLoop)
-  })
+  setImmediate(queryLoop)
 })()
 
 module.exports = run
