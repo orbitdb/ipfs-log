@@ -27,9 +27,9 @@ ipfs.on('ready', async () => {
     console.error(e)
   }
 
-  let log1 = new Log(ipfs, identityA, { lodId: 'A' })
-  let log2 = new Log(ipfs, identityB, { lodId: 'A' })
-  let log3 = new Log(ipfs, identityC, { lodId: 'A' })
+  let log1 = new Log(ipfs, identityA, { logId: 'A' })
+  let log2 = new Log(ipfs, identityB, { logId: 'A' })
+  let log3 = new Log(ipfs, identityC, { logId: 'A' })
 
   try {
     await log1.append('one')
