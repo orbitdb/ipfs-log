@@ -9,9 +9,8 @@ const Clock = require('./lamport-clock')
 const Sorting = require('./log-sorting')
 const { LastWriteWins, NoZeroes } = Sorting
 const AccessController = require('./default-access-controller')
-const { isDefined, findUniques } = require('./utils')
+const { isDefined, findUniques, randomId } = require('./utils')
 const EntryIndex = require('./entry-index')
-const randomId = () => new Date().getTime().toString()
 const getHash = e => e.hash
 const flatMap = (res, acc) => res.concat(acc)
 const getNextPointers = entry => entry.next
@@ -75,7 +74,7 @@ class Log extends GSet {
     this._sortFn = NoZeroes(sortFn)
 
     this._storage = ipfs
-    this._id = logId || randomId()
+    this._id = logId || randomId(42)
 
     // Access Controller
     this._access = access
