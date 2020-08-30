@@ -1,11 +1,11 @@
-const startIPFS = require('./utils/start-ipfs')
+const { startIpfs, stopIpfs, config } = require('orbit-db-test-utils')
 const createLog = require('./utils/create-log')
-const Log = require('../../../src/log')
+const Log = require('../src/log')
 
 const base = {
   prepare: async function () {
-    const { ipfs, repo } = await startIPFS('./ipfs-log-benchmarks/fromMultihash/ipfs')
-    const { log, access, identity } = await createLog(ipfs, 'A')
+    const ipfsd = await startIpfs('js-ipfs', config)
+    const { log, access, identity } = await createLog(ipfsd.api, 'A')
     const refCount = 64
     process.stdout.clearLine()
     for (let i = 1; i < this.count + 1; i++) {
@@ -14,13 +14,13 @@ const base = {
     }
 
     const multihash = await log.toMultihash()
-    return { ipfs, repo, access, identity, log, multihash }
+    return { ipfsd, access, identity, log, multihash }
   },
-  cycle: async function ({ log, access, identity, ipfs, multihash }) {
-    await Log.fromMultihash(ipfs, identity, multihash, { access })
+  cycle: async function ({ log, access, identity, ipfsd, multihash }) {
+    await Log.fromMultihash(ipfsd.api, identity, multihash, { access })
   },
-  teardown: async function ({ repo }) {
-    await repo.close()
+  teardown: async function ({ ipfsd }) {
+    await stopIpfs(ipfsd)
   }
 }
 
@@ -36,7 +36,7 @@ const stress = {
   }
 }
 
-const counts = [1, 100, 1000, 10000]
+const counts = [1, 100, 1000]
 const benchmarks = []
 for (const count of counts) {
   const c = { count }

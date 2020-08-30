@@ -1,11 +1,11 @@
-const Log = require('../../../src/log')
-const startIPFS = require('./utils/start-ipfs')
+const Log = require('../src/log')
+const { startIpfs, stopIpfs, config } = require('orbit-db-test-utils')
 const createLog = require('./utils/create-log')
 
 const base = {
   prepare: async function () {
-    const { ipfs, repo } = await startIPFS('./ipfs-log-benchmarks/fromEntry/ipfs')
-    const { log, access, identity } = await createLog(ipfs, 'A')
+    const ipfsd = await startIpfs('js-ipfs', config)
+    const { log, access, identity } = await createLog(ipfsd.api, 'A')
     const refCount = 64
     process.stdout.clearLine()
     for (let i = 1; i < this.count + 1; i++) {
@@ -13,13 +13,13 @@ const base = {
       await log.append('hello' + i, refCount)
     }
 
-    return { log, ipfs, repo, access, identity }
+    return { log, ipfsd, access, identity }
   },
-  cycle: async function ({ log, ipfs, access, identity }) {
-    await Log.fromEntry(ipfs, identity, log.heads, { access })
+  cycle: async function ({ log, ipfsd, access, identity }) {
+    await Log.fromEntry(ipfsd.api, identity, log.heads, { access })
   },
-  teardown: async function ({ repo }) {
-    await repo.close()
+  teardown: async function ({ ipfsd }) {
+    await stopIpfs(ipfsd)
   }
 }
 
@@ -35,7 +35,7 @@ const stress = {
   }
 }
 
-const counts = [1, 100, 1000, 10000]
+const counts = [1, 100, 1000]
 const benchmarks = []
 for (const count of counts) {
   const c = { count }

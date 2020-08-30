@@ -1,12 +1,12 @@
-const startIPFS = require('./utils/start-ipfs')
+const { startIpfs, stopIpfs, config } = require('orbit-db-test-utils')
 const createLog = require('./utils/create-log')
 
 const base = {
   prepare: async function () {
-    const { ipfs, repo } = await startIPFS('./ipfs-log-benchmarks/ipfs')
-    const { log: logA } = await createLog(ipfs, 'A')
-    const { log: logB } = await createLog(ipfs, 'B')
-    return { logA, logB, repo }
+    const ipfsd = await startIpfs('js-ipfs', config)
+    const { log: logA } = await createLog(ipfsd.api, 'A')
+    const { log: logB } = await createLog(ipfsd.api, 'B')
+    return { logA, logB, ipfsd }
   },
   cycle: async function ({ logA, logB }) {
     const add1 = await logA.append('Hello1')
@@ -16,8 +16,8 @@ const base = {
     logA.join(logB)
     logB.join(logA)
   },
-  teardown: async function ({ repo }) {
-    await repo.close()
+  teardown: async function ({ ipfsd }) {
+    await stopIpfs(ipfsd)
   }
 }
 

@@ -1,10 +1,10 @@
-const startIPFS = require('./utils/start-ipfs')
+const { startIpfs, stopIpfs, config } = require('orbit-db-test-utils')
 const createLog = require('./utils/create-log')
 
 const base = {
   prepare: async function () {
-    const { ipfs, repo } = await startIPFS('./ipfs-log-benchmarks/ipfs')
-    const { log } = await createLog(ipfs, 'A')
+    const ipfsd = await startIpfs('js-ipfs', config)
+    const { log } = await createLog(ipfsd.api, 'A')
 
     process.stdout.clearLine()
     for (let i = 1; i < this.count + 1; i++) {
@@ -12,13 +12,13 @@ const base = {
       await log.append(`Hello World: ${i}`)
     }
 
-    return { log, repo }
+    return { log, ipfsd }
   },
   cycle: async function ({ log }) {
-    return log.toString()
+    return log.tails
   },
-  teardown: async function ({ repo }) {
-    await repo.close()
+  teardown: async function ({ ipfsd }) {
+    await stopIpfs(ipfsd)
   }
 }
 
@@ -34,12 +34,12 @@ const stress = {
   }
 }
 
-const counts = [1, 100, 1000]
+const counts = [1, 100, 1000, 5000]
 const benchmarks = []
 for (const count of counts) {
   const c = { count }
-  if (count < 1000) benchmarks.push({ name: `toString-${count}-baseline`, ...base, ...c, ...baseline })
-  benchmarks.push({ name: `toString-${count}-stress`, ...base, ...c, ...stress })
+  benchmarks.push({ name: `tails-${count}-baseline`, ...base, ...c, ...baseline })
+  benchmarks.push({ name: `tails-${count}-stress`, ...base, ...c, ...stress })
 }
 
 module.exports = benchmarks

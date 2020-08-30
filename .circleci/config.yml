@@ -75,6 +75,7 @@ jobs:
     - run: npm run lint
     - run: npm test
     - run: npm run test:browser
+    - run: npm run benchmark
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # Save test results
     - store_test_results:
