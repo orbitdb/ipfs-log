@@ -15,7 +15,6 @@ const {
   stopIpfs,
   getIpfsPeerId,
   waitForPeers,
-  MemStore,
   connectPeers
 } = require('orbit-db-test-utils')
 
@@ -26,27 +25,18 @@ Object.keys(testAPIs).forEach((IPFS) => {
     let ipfsd1, ipfsd2, ipfs1, ipfs2, id1, id2, testIdentity, testIdentity2
 
     const { identityKeyFixtures, signingKeyFixtures, identityKeysPath, signingKeysPath } = config
-    const ipfsConfig1 = Object.assign({}, config.daemon1, {
-      repo: config.daemon1.repo + new Date().getTime()
-    })
-    const ipfsConfig2 = Object.assign({}, config.daemon2, {
-      repo: config.daemon2.repo + new Date().getTime()
-    })
 
     let keystore, signingKeystore
 
     before(async () => {
-      rmrf.sync(ipfsConfig1.repo)
-      rmrf.sync(ipfsConfig2.repo)
-
       rmrf.sync(identityKeysPath)
       rmrf.sync(signingKeysPath)
       await fs.copy(identityKeyFixtures, identityKeysPath)
       await fs.copy(signingKeyFixtures, signingKeysPath)
 
       // Start two IPFS instances
-      ipfsd1 = await startIpfs(IPFS, ipfsConfig1)
-      ipfsd2 = await startIpfs(IPFS, ipfsConfig2)
+      ipfsd1 = await startIpfs(IPFS, config.daemon1)
+      ipfsd2 = await startIpfs(IPFS, config.daemon2)
       ipfs1 = ipfsd1.api
       ipfs2 = ipfsd2.api
 
@@ -55,13 +45,6 @@ Object.keys(testAPIs).forEach((IPFS) => {
       // Get the peer IDs
       id1 = await getIpfsPeerId(ipfs1)
       id2 = await getIpfsPeerId(ipfs2)
-
-      // Use mem-store for faster testing (no disk IO)
-      const memstore = new MemStore()
-      ipfs1.dag.put = memstore.put.bind(memstore)
-      ipfs1.dag.get = memstore.get.bind(memstore)
-      ipfs2.dag.put = memstore.put.bind(memstore)
-      ipfs2.dag.get = memstore.get.bind(memstore)
 
       keystore = new Keystore(identityKeysPath)
       signingKeystore = new Keystore(signingKeysPath)
@@ -74,8 +57,6 @@ Object.keys(testAPIs).forEach((IPFS) => {
     after(async () => {
       await stopIpfs(ipfsd1)
       await stopIpfs(ipfsd2)
-      rmrf.sync(ipfsConfig1.repo)
-      rmrf.sync(ipfsConfig2.repo)
       rmrf.sync(identityKeysPath)
       rmrf.sync(signingKeysPath)
 
@@ -128,6 +109,11 @@ Object.keys(testAPIs).forEach((IPFS) => {
         await ipfs2.pubsub.subscribe(channel, handleMessage2)
       })
 
+      afterEach(async () => {
+        await ipfs1.pubsub.unsubscribe(channel, handleMessage)
+        await ipfs2.pubsub.unsubscribe(channel, handleMessage2)
+      })
+
       it('replicates logs', async () => {
         await waitForPeers(ipfs1, [id2], channel)
 
@@ -144,12 +130,13 @@ Object.keys(testAPIs).forEach((IPFS) => {
 
         const whileProcessingMessages = (timeoutMs) => {
           return new Promise((resolve, reject) => {
-            setTimeout(() => reject(new Error('timeout')), timeoutMs)
+            const timeout = setTimeout(() => reject(new Error('timeout')), timeoutMs)
             const timer = setInterval(() => {
               if (buffer1.length + buffer2.length === amount * 2 &&
                   processing === 0) {
                 console.log('\nAll messages received')
                 clearInterval(timer)
+                clearTimeout(timeout)
                 resolve()
               }
             }, 200)
