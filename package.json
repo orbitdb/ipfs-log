@@ -59,7 +59,7 @@
   },
   "standard": {
     "env": "mocha",
-    "ignore": "lib/es5/**/*.js"
+    "ignore": ["lib/es5/", "docs/"]
   },
   "contributors": [
     "haadcode",
