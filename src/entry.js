@@ -172,7 +172,7 @@ class Entry {
    * @returns {number} 1 if a is greater, -1 is b is greater
    */
   static compare (a, b) {
-    var distance = Clock.compare(a.clock, b.clock)
+    const distance = Clock.compare(a.clock, b.clock)
     if (distance === 0) return a.clock.id < b.clock.id ? -1 : 1
     return distance
   }
@@ -205,9 +205,9 @@ class Entry {
    * @returns {Array<Entry>}
    */
   static findChildren (entry, values) {
-    var stack = []
-    var parent = values.find((e) => Entry.isParent(entry, e))
-    var prev = entry
+    let stack = []
+    let parent = values.find((e) => Entry.isParent(entry, e))
+    let prev = entry
     while (parent) {
       stack.push(parent)
       prev = parent

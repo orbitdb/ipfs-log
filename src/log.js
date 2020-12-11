@@ -629,16 +629,16 @@ class Log extends GSet {
    * @returns {Array<Entry>}
    */
   static findHeads (entries) {
-    var indexReducer = (res, entry, idx, arr) => {
-      var addToResult = e => (res[e] = entry.hash)
+    const indexReducer = (res, entry, idx, arr) => {
+      const addToResult = e => (res[e] = entry.hash)
       entry.next.forEach(addToResult)
       return res
     }
 
-    var items = entries.reduce(indexReducer, {})
+    const items = entries.reduce(indexReducer, {})
 
-    var exists = e => items[e.hash] === undefined
-    var compareIds = (a, b) => a.clock.id > b.clock.id
+    const exists = e => items[e.hash] === undefined
+    const compareIds = (a, b) => a.clock.id > b.clock.id
 
     return entries.filter(exists).sort(compareIds)
   }
@@ -647,19 +647,19 @@ class Log extends GSet {
   // input array
   static findTails (entries) {
     // Reverse index { next -> entry }
-    var reverseIndex = {}
+    const reverseIndex = {}
     // Null index containing entries that have no parents (nexts)
-    var nullIndex = []
+    const nullIndex = []
     // Hashes for all entries for quick lookups
-    var hashes = {}
+    const hashes = {}
     // Hashes of all next entries
-    var nexts = []
+    let nexts = []
 
-    var addToIndex = (e) => {
+    const addToIndex = (e) => {
       if (e.next.length === 0) {
         nullIndex.push(e)
       }
-      var addToReverseIndex = (a) => {
+      const addToReverseIndex = (a) => {
         /* istanbul ignore else */
         if (!reverseIndex[a]) reverseIndex[a] = []
         reverseIndex[a].push(e)
@@ -676,9 +676,9 @@ class Log extends GSet {
     // Create our indices
     entries.forEach(addToIndex)
 
-    var addUniques = (res, entries, idx, arr) => res.concat(findUniques(entries, 'hash'))
-    var exists = e => hashes[e] === undefined
-    var findFromReverseIndex = e => reverseIndex[e]
+    const addUniques = (res, entries, idx, arr) => res.concat(findUniques(entries, 'hash'))
+    const exists = e => hashes[e] === undefined
+    const findFromReverseIndex = e => reverseIndex[e]
 
     // Drop hashes that are not in the input entries
     const tails = nexts // For every hash in nexts:
@@ -693,10 +693,10 @@ class Log extends GSet {
   // Find the hashes to entries that are not in a collection
   // but referenced by other entries
   static findTailHashes (entries) {
-    var hashes = {}
-    var addToIndex = e => (hashes[e.hash] = true)
-    var reduceTailHashes = (res, entry, idx, arr) => {
-      var addToResult = (e) => {
+    const hashes = {}
+    const addToIndex = e => (hashes[e.hash] = true)
+    const reduceTailHashes = (res, entry, idx, arr) => {
+      const addToResult = (e) => {
         /* istanbul ignore else */
         if (hashes[e] === undefined) {
           res.splice(0, 0, e)

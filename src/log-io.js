@@ -149,7 +149,7 @@ class LogIO {
     const missingSourceEntries = difference(sliced, sourceEntries, 'hash')
 
     const replaceInFront = (a, withEntries) => {
-      var sliced = a.slice(withEntries.length, a.length)
+      const sliced = a.slice(withEntries.length, a.length)
       return withEntries.concat(sliced)
     }
 
