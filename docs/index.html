@@ -42,6 +42,185 @@
 
 
 
+    <section>
+        <article><h1>ipfs-log</h1>
+<p><a href="https://www.npmjs.com/package/ipfs-log"><img src="https://img.shields.io/npm/v/ipfs-log.svg" alt="npm"></a>
+<a href="https://circleci.com/gh/orbitdb/ipfs-log"><img src="https://circleci.com/gh/orbitdb/ipfs-log.svg?style=shield" alt="CircleCI Status"></a>
+<a href="https://gitter.im/orbitdb/Lobby"><img src="https://img.shields.io/gitter/room/nwjs/nw.js.svg" alt="Gitter"></a> <a href="https://riot.permaweb.io/#/room/#orbitdb:permaweb.io"><img src="https://img.shields.io/badge/matrix-%23orbitdb%3Apermaweb.io-blue.svg" alt="Matrix"></a> <a href="https://discord.gg/cscuf5T"><img src="https://img.shields.io/discord/475789330380488707?color=blueviolet&amp;label=discord" alt="Discord"></a></p>
+<blockquote>
+<p>An append-only log on IPFS.</p>
+</blockquote>
+<p><code>ipfs-log</code> is an immutable, operation-based conflict-free replicated data structure (<a href="https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type">CRDT</a>) for distributed systems. It's an append-only log that can be used to model a mutable, shared state between peers in p2p applications.</p>
+<p>Every entry in the log is saved in IPFS and each points to a hash of previous entry(ies) forming a graph. Logs can be forked and joined back together.</p>
+<p>The module works in <strong>Node.js</strong> and <strong>Browsers</strong>.</p>
+<pre class="prettyprint source"><code>           Log A                Log B
+             |                    |
+     logA.append(&quot;one&quot;)   logB.append(&quot;hello&quot;)
+             |                    |
+             v                    v
+          +-----+             +-------+
+          |&quot;one&quot;|             |&quot;hello&quot;|
+          +-----+             +-------+
+             |                    |
+     logA.append(&quot;two&quot;)   logB.append(&quot;world&quot;)
+             |                    |
+             v                    v
+       +-----------+       +---------------+
+       |&quot;one&quot;,&quot;two&quot;|       |&quot;hello&quot;,&quot;world&quot;|
+       +-----------+       +---------------+
+             |                    |
+             |                    |
+       logA.join(logB) &lt;----------+
+             |
+             v
++---------------------------+
+|&quot;one&quot;,&quot;hello&quot;,&quot;two&quot;,&quot;world&quot;|
++---------------------------+
+</code></pre>
+<h2>Table of Contents</h2>
+<ul>
+<li><a href="#background">Background</a></li>
+<li><a href="#install">Install</a></li>
+<li><a href="#usage">Usage</a></li>
+<li><a href="#api">API</a></li>
+<li><a href="#tests">Tests</a></li>
+<li><a href="#benchmarking">Benchmarking</a></li>
+<li><a href="#build">Build</a></li>
+<li><a href="#contribute">Contribute</a></li>
+<li><a href="#license">License</a></li>
+</ul>
+<h2>Background</h2>
+<p>IPFS Log has a few use cases:</p>
+<ul>
+<li>CRDTs</li>
+<li>Database operations log</li>
+<li>Feed of data</li>
+<li>Track a version of a file</li>
+<li>Messaging</li>
+</ul>
+<p>It was originally created for, and currently used in, <a href="https://github.com/orbitdb/orbit-db">orbit-db</a> - a distributed peer-to-peer database on <a href="https://github.com/ipfs/ipfs">IPFS</a>.</p>
+<h2>Requirements</h2>
+<ul>
+<li>Node.js v8.6.0 or newer (uses <code>...</code> spread syntax)</li>
+<li>Preferably you should use an LTS version of node.js (even numbered 8, 10, etc)</li>
+</ul>
+<h2>Install</h2>
+<p>This project uses <a href="http://npmjs.com/">npm</a> and <a href="https://nodejs.org/">nodejs</a>.</p>
+<pre class="prettyprint source"><code>npm install ipfs-log
+</code></pre>
+<h2>Usage</h2>
+<p>See the <a href="#api">API documentation</a> and <a href="https://github.com/orbitdb/ipfs-log/tree/master/examples">examples</a> for more details.</p>
+<h3>Quick Start</h3>
+<p>Install dependencies:</p>
+<pre class="prettyprint source"><code>npm install ipfs-log ipfs
+</code></pre>
+<p>Run a simple program:</p>
+<pre class="prettyprint source lang-javascript"><code>
+// For js-ipfs >= 0.38
+
+const Log = require(&quot;ipfs-log&quot;);
+const IdentityProvider = require(&quot;orbit-db-identity-provider&quot;);
+const IPFS = require(&quot;ipfs&quot;);
+
+const start = async () => {
+  const identity = await IdentityProvider.createIdentity({ id: &quot;peerid&quot; });
+  const ipfs = await IPFS.create({ repo: &quot;./path-for-js-ipfs-repo&quot; });
+  const log = new Log(ipfs, identity);
+
+  await log.append({ some: &quot;data&quot; });
+  await log.append(&quot;text&quot;);
+  console.log(log.values.map((e) => e.payload));
+};
+
+start();
+
+// [ { some: 'data' }, 'text' ]
+</code></pre>
+<h3>Node.js</h3>
+<p>See <a href="https://github.com/orbitdb/ipfs-log/tree/master/examples">examples</a> for details.</p>
+<p><em>If your platforms requires ES5-compatible JavaScript, there's a build in <code>lib/es5/</code>.</em></p>
+<h3>Browser</h3>
+<p>See <a href="https://github.com/orbitdb/ipfs-log/tree/master/examples/browser">examples/browser</a> for details.</p>
+<p><em>The distribution package for browsers is located in <a href="https://github.com/orbitdb/ipfs-log/tree/master/dist">dist/ipfslog.min.js</a></em></p>
+<p><em>If your platforms requires ES5-compatible JavaScript, there's a build in <code>lib/es5/</code>.</em></p>
+<h2>API</h2>
+<p>See <a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md">API Documentation</a> for full details.</p>
+<ul>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md#log">Log</a>
+<ul>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##constructor">Constructor</a>
+<ul>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##new-log-ipfs-id">new Log(ipfs, identity, [{ logId, access, entries, heads, clock, sortFn }])</a></li>
+</ul>
+</li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##properties">Properties</a>
+<ul>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##id">id</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##values">values</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##length">length</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##length">clock</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##heads">heads</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##tails">tails</a></li>
+</ul>
+</li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##methods">Methods</a>
+<ul>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##appenddata">append(data)</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##joinlog">join(log)</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##tomultihash">toMultihash()</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##tobuffer">toBuffer()</a></li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##toString">toString()</a></li>
+</ul>
+</li>
+<li><a href="https://github.com/orbitdb/ipfs-log/tree/master/API.md##static-methods">Static Methods</a>
+<ul>
+<li><a href="">Log.fromEntry()</a></li>
+<li><a href="">Log.fromEntryCid()</a></li>
+<li><a href="">Log.fromCID()</a></li>
+<li><a href="">Log.fromMultihash()</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2>Tests</h2>
+<p>Run all tests:</p>
+<pre class="prettyprint source"><code>npm test
+</code></pre>
+<p>Run tests with js-ipfs only (default):</p>
+<pre class="prettyprint source"><code>mocha
+</code></pre>
+<p>Run tests with go-ipfs only:</p>
+<pre class="prettyprint source"><code>TEST=go mocha
+</code></pre>
+<h2>Benchmarking</h2>
+<p>To use the benchmark runner:</p>
+<pre class="prettyprint source lang-JavaScript"><code>node --expose-gc benchmarks/runner/index.js -r --grep append-stress --stress-limit Infinity
+</code></pre>
+<p>This will run the <code>append-stress</code> benchmarks until it is canceled. For more information, see the <a href="./benchmarks/README.md">Benchmarking README</a>.</p>
+<h2>Build</h2>
+<p>Run the following command before you commit.</p>
+<pre class="prettyprint source"><code>make rebuild
+</code></pre>
+<p>This will ensure that dependencies and built files are all based on the current code base.</p>
+<h2>Benchmarks</h2>
+<p>There's a benchmark suite in <a href="https://github.com/orbitdb/ipfs-log/blob/master/benchmarks">benchmarks/</a> that can be run with:</p>
+<pre class="prettyprint source"><code>node benchmarks/benchmark-append.js
+node benchmarks/benchmark-join.js
+node benchmarks/benchmark-expand.js
+</code></pre>
+<p>There's <code>append</code> and <code>join</code> benchmarks for browsers in <a href="https://github.com/orbitdb/ipfs-log/blob/master/benchmarks/browser">benchmarks/browser/</a> which you can run by opening the <code>.html</code> files in your browser.</p>
+<h2>Contribute</h2>
+<p>If you find a bug or something is broken, let us know! PRs and <a href="https://github.com/orbitdb/ipfs-log/issues">issues</a> are gladly accepted too. Take a look at the open issues, too, to see if there is anything that you could do or someone else has already done. Here are some things I know I need:</p>
+<h3>TODO</h3>
+<ul>
+<li>Support for payload encryption</li>
+</ul>
+<h2>License</h2>
+<p><a href="LICENSE">MIT</a> © 2016-2018 Protocol Labs Inc.,
+2016-2019 Haja Networks Oy</p></article>
+    </section>
+
 
 
 
@@ -56,7 +235,7 @@
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Dec 11 2020 13:55:39 GMT-0500 (Eastern Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Dec 11 2020 14:01:03 GMT-0500 (Eastern Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>
