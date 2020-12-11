@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: log-sorting.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: log-sorting.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>'use strict'
+
+const Clock = require('./lamport-clock')
+
+/**
+ * Sort two entries as Last-Write-Wins (LWW).
+ *
+ * Last Write Wins is a conflict resolution strategy for sorting elements
+ * where the element with a greater clock (latest) is chosen as the winner.
+ *
+ * @param {Entry} a First entry
+ * @param {Entry} b Second entry
+ * @returns {number} 1 if a is latest, -1 if b is latest
+ */
+function LastWriteWins (a, b) {
+  // Ultimate conflict resolution (take the first/left arg)
+  const First = (a, b) => a
+  // Sort two entries by their clock id, if the same always take the first
+  const sortById = (a, b) => SortByClockId(a, b, First)
+  // Sort two entries by their clock time, if concurrent,
+  // determine sorting using provided conflict resolution function
+  const sortByEntryClocks = (a, b) => SortByClocks(a, b, sortById)
+  // Sort entries by clock time as the primary sort criteria
+  return sortByEntryClocks(a, b)
+}
+
+/**
+ * Sort two entries by their hash.
+ *
+ * @param {Entry} a First entry
+ * @param {Entry} b Second entry
+ * @returns {number} 1 if a is latest, -1 if b is latest
+ */
+function SortByEntryHash (a, b) {
+  // Ultimate conflict resolution (compare hashes)
+  const compareHash = (a, b) => a.hash &lt; b.hash ? -1 : 1
+  // Sort two entries by their clock id, if the same then compare hashes
+  const sortById = (a, b) => SortByClockId(a, b, compareHash)
+  // Sort two entries by their clock time, if concurrent,
+  // determine sorting using provided conflict resolution function
+  const sortByEntryClocks = (a, b) => SortByClocks(a, b, sortById)
+  // Sort entries by clock time as the primary sort criteria
+  return sortByEntryClocks(a, b)
+}
+
+/**
+ * Sort two entries by their clock time.
+ * @param {Entry} a First entry to compare
+ * @param {Entry} b Second entry to compare
+ * @param {function(a, b)} resolveConflict A function to call if entries are concurrent (happened at the same time). The function should take in two entries and return 1 if the first entry should be chosen and -1 if the second entry should be chosen.
+ * @returns {number} 1 if a is greater, -1 if b is greater
+ */
+function SortByClocks (a, b, resolveConflict) {
+  // Compare the clocks
+  const diff = Clock.compare(a.clock, b.clock)
+  // If the clocks are concurrent, use the provided
+  // conflict resolution function to determine which comes first
+  return diff === 0 ? resolveConflict(a, b) : diff
+}
+
+/**
+ * Sort two entries by their clock id.
+ * @param {Entry} a First entry to compare
+ * @param {Entry} b Second entry to compare
+ * @param {function(a, b)} resolveConflict A function to call if the clocks ids are the same. The function should take in two entries and return 1 if the first entry should be chosen and -1 if the second entry should be chosen.
+ * @returns {number} 1 if a is greater, -1 if b is greater
+ */
+function SortByClockId (a, b, resolveConflict) {
+  // Sort by ID if clocks are concurrent,
+  // take the entry with a "greater" clock id
+  return a.clock.id === b.clock.id
+    ? resolveConflict(a, b)
+    : a.clock.id &lt; b.clock.id ? -1 : 1
+}
+
+/**
+ * A wrapper function to throw an error if the results of a passed function return zero
+ * @param {function(a, b)} [tiebreaker] The tiebreaker function to validate.
+ * @returns {function(a, b)} 1 if a is greater, -1 if b is greater
+ * @throws {Error} if func ever returns 0
+ */
+function NoZeroes (func) {
+  const msg = `Your log's tiebreaker function, ${func.name}, has returned zero and therefore cannot be`
+
+  const comparator = (a, b) => {
+    // Validate by calling the function
+    const result = func(a, b)
+    if (result === 0) { throw Error(msg) }
+    return result
+  }
+
+  return comparator
+}
+
+exports.SortByClocks = SortByClocks
+exports.SortByClockId = SortByClockId
+exports.LastWriteWins = LastWriteWins
+exports.SortByEntryHash = SortByEntryHash
+exports.NoZeroes = NoZeroes
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="GSet.html">GSet</a></li><li><a href="Log.html">Log</a></li></ul><h3>Global</h3><ul><li><a href="global.html#LastWriteWins">LastWriteWins</a></li><li><a href="global.html#NoZeroes">NoZeroes</a></li><li><a href="global.html#SortByClockId">SortByClockId</a></li><li><a href="global.html#SortByClocks">SortByClocks</a></li><li><a href="global.html#SortByEntryHash">SortByEntryHash</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Dec 11 2020 13:55:39 GMT-0500 (Eastern Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

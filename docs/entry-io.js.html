@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: entry-io.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: entry-io.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>'use strict'
+
+const pMap = require('p-map')
+const pDoWhilst = require('p-do-whilst')
+const Entry = require('./entry')
+
+const hasItems = arr => arr &amp;&amp; arr.length > 0
+
+class EntryIO {
+  // Fetch log graphs in parallel
+  static async fetchParallel (ipfs, hashes, { length, exclude = [], timeout, concurrency, onProgressCallback }) {
+    const fetchOne = async (hash) => EntryIO.fetchAll(ipfs, hash, { length, exclude, timeout, onProgressCallback, concurrency })
+    const concatArrays = (arr1, arr2) => arr1.concat(arr2)
+    const flatten = (arr) => arr.reduce(concatArrays, [])
+    const res = await pMap(hashes, fetchOne, { concurrency: Math.max(concurrency || hashes.length, 1) })
+    return flatten(res)
+  }
+
+  /**
+   * Fetch log entries
+   *
+   * @param {IPFS} [ipfs] An IPFS instance
+   * @param {string} [hash] Multihash of the entry to fetch
+   * @param {string} [parent] Parent of the node to be fetched
+   * @param {Object} [all] Entries to skip
+   * @param {Number} [amount=-1] How many entries to fetch
+   * @param {Number} [depth=0] Current depth of the recursion
+   * @param {function(hash, entry, parent, depth)} onProgressCallback
+   * @returns {Promise&lt;Array&lt;Entry>>}
+   */
+  static async fetchAll (ipfs, hashes, { length = -1, exclude = [], timeout, onProgressCallback, onStartProgressCallback, concurrency = 32, delay = 0 } = {}) {
+    const result = []
+    const cache = {}
+    const loadingCache = {}
+    const loadingQueue = Array.isArray(hashes)
+      ? { 0: hashes.slice() }
+      : { 0: [hashes] }
+    let running = 0 // keep track of how many entries are being fetched at any time
+    let maxClock = 0 // keep track of the latest clock time during load
+    let minClock = 0 // keep track of the minimum clock time during load
+
+    // Does the loading queue have more to process?
+    const loadingQueueHasMore = () => Object.values(loadingQueue).find(hasItems) !== undefined
+
+    // Add a multihash to the loading queue
+    const addToLoadingQueue = (e, idx) => {
+      if (!loadingCache[e]) {
+        if (!loadingQueue[idx]) loadingQueue[idx] = []
+        if (!loadingQueue[idx].includes(e)) {
+          loadingQueue[idx].push(e)
+        }
+        loadingCache[e] = true
+      }
+    }
+
+    // Get the next items to process from the loading queue
+    const getNextFromQueue = (length = 1) => {
+      const getNext = (res, key, idx) => {
+        const nextItems = loadingQueue[key]
+        while (nextItems.length > 0 &amp;&amp; res.length &lt; length) {
+          const hash = nextItems.shift()
+          res.push(hash)
+        }
+        if (nextItems.length === 0) {
+          delete loadingQueue[key]
+        }
+        return res
+      }
+      return Object.keys(loadingQueue).reduce(getNext, [])
+    }
+
+    // Add entries that we don't need to fetch to the "cache"
+    const addToExcludeCache = e => { cache[e.hash] = true }
+
+    // Fetch one entry and add it to the results
+    const fetchEntry = async (hash) => {
+      if (!hash || cache[hash]) {
+        return
+      }
+
+      return new Promise((resolve, reject) => {
+        // Resolve the promise after a timeout (if given) in order to
+        // not get stuck loading a block that is unreachable
+        const timer = timeout &amp;&amp; timeout > 0
+          ? setTimeout(() => {
+            console.warn(`Warning: Couldn't fetch entry '${hash}', request timed out (${timeout}ms)`)
+            resolve()
+          }, timeout)
+          : null
+
+        const addToResults = (entry) => {
+          if (Entry.isEntry(entry)) {
+            const ts = entry.clock.time
+
+            // Update min/max clocks
+            maxClock = Math.max(maxClock, ts)
+            minClock = result.length > 0
+              ? Math.min(result[result.length - 1].clock.time, minClock)
+              : maxClock
+
+            const isLater = (result.length >= length &amp;&amp; ts >= minClock)
+            const calculateIndex = (idx) => maxClock - ts + ((idx + 1) * idx)
+
+            // Add the entry to the results if
+            // 1) we're fetching all entries
+            // 2) results is not filled yet
+            // the clock of the entry is later than current known minimum clock time
+            if (length &lt; 0 || result.length &lt; length || isLater) {
+              result.push(entry)
+              cache[hash] = true
+
+              if (onProgressCallback) {
+                onProgressCallback(hash, entry, result.length, result.length)
+              }
+            }
+
+            if (length &lt; 0) {
+              // If we're fetching all entries (length === -1), adds nexts and refs to the queue
+              entry.next.forEach(addToLoadingQueue)
+              if (entry.refs) entry.refs.forEach(addToLoadingQueue)
+            } else {
+              // If we're fetching entries up to certain length,
+              // fetch the next if result is filled up, to make sure we "check"
+              // the next entry if its clock is later than what we have in the result
+              if (result.length &lt; length || ts > minClock || (ts === minClock &amp;&amp; !cache[entry.hash])) {
+                entry.next.forEach(e => addToLoadingQueue(e, calculateIndex(0)))
+              }
+              if (entry.refs &amp;&amp; (result.length + entry.refs.length &lt;= length)) {
+                entry.refs.forEach((e, i) => addToLoadingQueue(e, calculateIndex(i)))
+              }
+            }
+          }
+        }
+
+        if (onStartProgressCallback) {
+          onStartProgressCallback(hash, null, 0, result.length)
+        }
+
+        // Load the entry
+        Entry.fromMultihash(ipfs, hash).then(async (entry) => {
+          try {
+            // Add it to the results
+            addToResults(entry)
+
+            // Simulate network latency (for debugging purposes)
+            if (delay > 0) {
+              const sleep = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms))
+              await sleep(delay)
+            }
+            resolve()
+          } catch (e) {
+            reject(e)
+          } finally {
+            clearTimeout(timer)
+          }
+        }).catch(reject)
+      })
+    }
+
+    // One loop of processing the loading queue
+    const _processQueue = async () => {
+      if (running &lt; concurrency) {
+        const nexts = getNextFromQueue(concurrency)
+        running += nexts.length
+        await pMap(nexts, fetchEntry)
+        running -= nexts.length
+      }
+    }
+
+    // Add entries to exclude from processing to the cache before we start
+    exclude.forEach(addToExcludeCache)
+
+    // Fetch entries
+    await pDoWhilst(_processQueue, loadingQueueHasMore)
+
+    return result
+  }
+}
+
+module.exports = EntryIO
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="GSet.html">GSet</a></li><li><a href="Log.html">Log</a></li></ul><h3>Global</h3><ul><li><a href="global.html#LastWriteWins">LastWriteWins</a></li><li><a href="global.html#NoZeroes">NoZeroes</a></li><li><a href="global.html#SortByClockId">SortByClockId</a></li><li><a href="global.html#SortByClocks">SortByClocks</a></li><li><a href="global.html#SortByEntryHash">SortByEntryHash</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Fri Dec 11 2020 13:55:39 GMT-0500 (Eastern Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
