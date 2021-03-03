@@ -13,6 +13,7 @@ build: test
 	@echo "Built: 'dist/', 'examples/browser/'"
 
 clean:
+	rm -r dist/*.js.map
 	rm -rf ipfs/
 	rm -rf ipfs-log-benchmarks/
 	rm -rf orbitdb/
