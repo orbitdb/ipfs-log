@@ -6,6 +6,7 @@ const fs = require('fs-extra')
 const Log = require('../src/log')
 const IdentityProvider = require('orbit-db-identity-provider')
 const Keystore = require('orbit-db-keystore')
+const uint8ArrayToString = require('uint8arrays/to-string')
 
 // Test utils
 const {
@@ -19,7 +20,7 @@ const {
 } = require('orbit-db-test-utils')
 
 Object.keys(testAPIs).forEach((IPFS) => {
-  describe.skip('ipfs-log - Replication (' + IPFS + ')', function () {
+  describe('ipfs-log - Replication (' + IPFS + ')', function () {
     this.timeout(config.timeout * 2)
 
     let ipfsd1, ipfsd2, ipfs1, ipfs2, id1, id2, testIdentity, testIdentity2
@@ -78,7 +79,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         if (id1 === message.from) {
           return
         }
-        const hash = message.data.toString()
+        const hash = uint8ArrayToString(message.data)
         buffer1.push(hash)
         processing++
         process.stdout.write('\r')
@@ -94,7 +95,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
         if (id2 === message.from) {
           return
         }
-        const hash = message.data.toString()
+        const hash = uint8ArrayToString(message.data)
         buffer2.push(hash)
         processing++
         process.stdout.write('\r')
