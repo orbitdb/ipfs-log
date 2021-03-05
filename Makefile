@@ -13,13 +13,13 @@ build: test
 	@echo "Built: 'dist/', 'examples/browser/'"
 
 clean:
-	rm -r dist/*.js.map
 	rm -rf ipfs/
 	rm -rf ipfs-log-benchmarks/
 	rm -rf orbitdb/
 	rm -rf node_modules/
 	rm -rf coverage/
 	rm -rf test/keystore/
+	rm -f dist/*.js.map
 
 clean-dependencies: clean
 	rm -f package-lock.json
