@@ -348,7 +348,7 @@ class Log extends GSet {
   {}) {
     if (amount === 0) return (function * () {})()
     if (typeof lte === 'string') lte = [this.get(lte)]
-    if (typeof lt === 'string') lt = [this.get(this.get(lt).next[0])]
+    if (typeof lt === 'string') lt = this.get(lt).next.map(e => this.get(e))
 
     if (lte && !Array.isArray(lte)) throw LogError.LtOrLteMustBeStringOrArray()
     if (lt && !Array.isArray(lt)) throw LogError.LtOrLteMustBeStringOrArray()
