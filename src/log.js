@@ -287,7 +287,6 @@ class Log extends GSet {
     const isNext = e => !nexts.includes(e)
     // Delete the heads from the refs
     const refs = Array.from(references).map(getHash).filter(isNext)
-
     // @TODO: Split Entry.create into creating object, checking permission, signing and then posting to IPFS
     // Create the entry and add it to the internal cache
     const entry = await Entry.create(
@@ -349,7 +348,7 @@ class Log extends GSet {
   {}) {
     if (amount === 0) return (function * () {})()
     if (typeof lte === 'string') lte = [this.get(lte)]
-    if (typeof lt === 'string') lt = [this.get(this.get(lt).next[0])]
+    if (typeof lt === 'string') lt = this.get(lt).next.map(e => this.get(e))
 
     if (lte && !Array.isArray(lte)) throw LogError.LtOrLteMustBeStringOrArray()
     if (lt && !Array.isArray(lt)) throw LogError.LtOrLteMustBeStringOrArray()
@@ -547,10 +546,10 @@ class Log extends GSet {
    * @returns {Promise<Log>}
    */
   static async fromMultihash (ipfs, identity, hash,
-    { access, length = -1, exclude = [], timeout, concurrency, sortFn, onProgressCallback } = {}) {
+    { access, length = -1, exclude = [], shouldExclude, timeout, concurrency, sortFn, onProgressCallback } = {}) {
     // TODO: need to verify the entries with 'key'
     const { logId, entries, heads } = await LogIO.fromMultihash(ipfs, hash,
-      { length, exclude, timeout, onProgressCallback, concurrency, sortFn })
+      { length, exclude, shouldExclude, timeout, onProgressCallback, concurrency, sortFn })
     return new Log(ipfs, identity, { logId, access, entries, heads, sortFn })
   }
 
@@ -569,10 +568,10 @@ class Log extends GSet {
    * @return {Promise<Log>} New Log
    */
   static async fromEntryHash (ipfs, identity, hash,
-    { logId, access, length = -1, exclude = [], timeout, concurrency, sortFn, onProgressCallback } = {}) {
+    { logId, access, length = -1, exclude = [], shouldExclude, timeout, concurrency, sortFn, onProgressCallback } = {}) {
     // TODO: need to verify the entries with 'key'
     const { entries } = await LogIO.fromEntryHash(ipfs, hash,
-      { length, exclude, timeout, concurrency, onProgressCallback })
+      { length, exclude, shouldExclude, timeout, concurrency, onProgressCallback })
     return new Log(ipfs, identity, { logId, access, entries, sortFn })
   }
 

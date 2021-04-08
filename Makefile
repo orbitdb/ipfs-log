@@ -19,6 +19,7 @@ clean:
 	rm -rf node_modules/
 	rm -rf coverage/
 	rm -rf test/keystore/
+	rm -f dist/*.js.map
 
 clean-dependencies: clean
 	rm -f package-lock.json
