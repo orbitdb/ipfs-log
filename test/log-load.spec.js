@@ -123,7 +123,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
         const st = new Date().getTime()
         const log = await Log.fromJSON(ipfs, testIdentity, json, { logId: 'X', timeout })
         const et = new Date().getTime()
-        assert.strictEqual((et - st) >= timeout, true, '' + (et - st) + ' should be greater than timeout ' + timeout)
+        // Allow for a few millseconds of skew
+        assert.strictEqual((et - st) >= (timeout - 10), true, '' + (et - st) + ' should be greater than timeout ' + timeout)
         assert.strictEqual(log.length, 0)
         assert.deepStrictEqual(log.values.map(e => e.payload), [])
       })
