@@ -867,7 +867,7 @@ Object.keys(testAPIs).forEach((IPFS) => {
           const st = new Date().getTime()
           const log = await Log.fromEntry(ipfs, testIdentity, e, { timeout })
           const et = new Date().getTime()
-          assert.strictEqual((et - st) >= timeout, true, '' + (et - st) + ' should be greater than timeout ' + timeout)
+          assert.strictEqual((et - st) >= (timeout - 10), true, '' + (et - st) + ' should be greater than timeout ' + timeout)
           assert.strictEqual(log.length, 1)
           assert.deepStrictEqual(log.values.map(e => e.payload), [e.payload])
         })
