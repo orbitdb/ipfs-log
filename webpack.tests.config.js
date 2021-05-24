@@ -39,9 +39,9 @@ module.exports = {
       path.resolve(__dirname, '../node_modules')
     ],
     fallback: {
-      "assert": require.resolve('assert'),
-      "path": require.resolve("path-browserify"),
-      "stream": require.resolve("stream-browserify")
+      assert: require.resolve('assert'),
+      path: require.resolve('path-browserify'),
+      stream: require.resolve('stream-browserify')
     }
   },
   module: {

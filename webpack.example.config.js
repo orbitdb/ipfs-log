@@ -33,8 +33,8 @@ module.exports = {
       path.resolve(__dirname, '../node_modules')
     ],
     fallback: {
-      "path": require.resolve("path-browserify"),
-      "stream": require.resolve("stream-browserify")
+      path: require.resolve('path-browserify'),
+      stream: require.resolve('stream-browserify')
     }
   }
 }
