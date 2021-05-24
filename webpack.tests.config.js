@@ -12,11 +12,6 @@ module.exports = {
   },
   target: 'web',
   devtool: 'source-map',
-  node: {
-    console: false,
-    process: true,
-    Buffer: true
-  },
   plugins: [
     new webpack.DefinePlugin({
       'process.env': {
@@ -42,14 +37,12 @@ module.exports = {
     modules: [
       'node_modules',
       path.resolve(__dirname, '../node_modules')
-    ]
-  },
-  resolveLoader: {
-    modules: [
-      'node_modules',
-      path.resolve(__dirname, '../node_modules')
     ],
-    moduleExtensions: ['-loader']
+    fallback: {
+      "assert": require.resolve('assert'),
+      "path": require.resolve("path-browserify"),
+      "stream": require.resolve("stream-browserify")
+    }
   },
   module: {
     rules: [
@@ -59,10 +52,13 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: [
-              ['@babel/preset-env', { modules: false }]
-            ],
-            plugins: ['@babel/syntax-object-rest-spread', '@babel/transform-runtime', '@babel/plugin-transform-modules-commonjs']
+            plugins: [
+              '@babel/syntax-object-rest-spread',
+              '@babel/transform-runtime',
+              '@babel/plugin-transform-modules-commonjs',
+              '@babel/plugin-proposal-nullish-coalescing-operator',
+              '@babel/plugin-proposal-optional-chaining'
+            ]
           }
         }
       },

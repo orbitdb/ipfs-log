@@ -10,12 +10,7 @@ module.exports = {
     filename: '../examples/browser/bundle.js'
   },
   target: 'web',
-  devtool: 'sourcemap',
-  node: {
-    console: false,
-    process: 'mock',
-    Buffer: true
-  },
+  devtool: 'source-map',
   plugins: [
     new webpack.IgnorePlugin(/mongo|redis/)
   ],
@@ -36,13 +31,10 @@ module.exports = {
     modules: [
       'node_modules',
       path.resolve(__dirname, '../node_modules')
-    ]
-  },
-  resolveLoader: {
-    modules: [
-      'node_modules',
-      path.resolve(__dirname, '../node_modules')
     ],
-    moduleExtensions: ['-loader']
+    fallback: {
+      "path": require.resolve("path-browserify"),
+      "stream": require.resolve("stream-browserify")
+    }
   }
 }

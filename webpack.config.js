@@ -10,11 +10,7 @@ module.exports = {
     filename: 'ipfslog.min.js'
   },
   target: 'web',
-  devtool: 'sourcemap',
-  node: {
-    console: false,
-    Buffer: true
-  },
+  devtool: 'source-map',
   plugins: [
   ],
   resolve: {
@@ -22,12 +18,5 @@ module.exports = {
       'node_modules',
       path.resolve(__dirname, '../node_modules')
     ]
-  },
-  resolveLoader: {
-    modules: [
-      'node_modules',
-      path.resolve(__dirname, '../node_modules')
-    ],
-    moduleExtensions: ['-loader']
   }
 }
