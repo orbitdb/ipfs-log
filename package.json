@@ -53,8 +53,7 @@
     "rimraf": "~3.0.2",
     "standard": "~16.0.3",
     "webpack": "~4.44.2",
-    "webpack-cli": "~3.3.12",
-    "yargs": "^16.1.1"
+    "webpack-cli": "~3.3.12"
   },
   "standard": {
     "env": "mocha",
