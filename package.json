@@ -43,7 +43,7 @@
     "is-node": "^1.0.2",
     "jsdoc": "^3.6.6",
     "json-loader": "~0.5.7",
-    "mocha": "~8.2.1",
+    "mocha": "^8.4.0",
     "mocha-headless-chrome": "^3.1.0",
     "nyc": "^15.0.1",
     "orbit-db-benchmark-runner": "^1.0.3",
