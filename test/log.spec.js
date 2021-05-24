@@ -9,6 +9,7 @@ const Log = require('../src/log')
 const IdentityProvider = require('orbit-db-identity-provider')
 const Keystore = require('orbit-db-keystore')
 const fs = require('fs-extra')
+const io = require('orbit-db-io')
 
 // For tiebreaker testing
 const { LastWriteWins } = require('../src/log-sorting')
@@ -336,8 +337,8 @@ Object.keys(testAPIs).forEach((IPFS) => {
           await log.append('one')
           const hash = await log.toMultihash()
           assert.strictEqual(hash, expectedCid)
-          const result = await ipfs.dag.get(hash)
-          const heads = result.value.heads.map(head => head.toBaseEncodedString('base58btc'))
+          const result = await io.read(ipfs, hash)
+          const heads = result.heads.map(head => head.toBaseEncodedString('base58btc'))
           assert.deepStrictEqual(heads, expectedData.heads)
         })
 
