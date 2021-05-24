@@ -10,7 +10,7 @@
     "url": "https://github.com/orbitdb/ipfs-log"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=14.0.0"
   },
   "keywords": [
     "ipfs",
