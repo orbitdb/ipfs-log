@@ -1,7 +1,7 @@
 const Keystore = require('orbit-db-keystore')
 const IdentityProvider = require('orbit-db-identity-provider')
-const leveldown = require('leveldown')
-const storage = require('orbit-db-storage-adapter')(leveldown)
+const level = require('level')
+const storage = require('orbit-db-storage-adapter')(level)
 
 const Log = require('../../src/log')
 const AccessController = Log.AccessController

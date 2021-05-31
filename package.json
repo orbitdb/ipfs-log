@@ -51,7 +51,7 @@
     "mocha": "^8.4.0",
     "mocha-headless-chrome": "^3.1.0",
     "nyc": "^15.0.1",
-    "orbit-db-benchmark-runner": "^1.0.3",
+    "orbit-db-benchmark-runner": "github:tabcat/benchmark-runner#benchmarker",
     "orbit-db-storage-adapter": "^0.5.3",
     "orbit-db-test-utils": "^1.0.2",
     "path-browserify": "^1.0.1",
@@ -95,6 +95,7 @@
     "lint": "standard",
     "benchmark": "nyc benchmark-runner -r -b --baselineLimit 1000",
     "benchmark:stress": "benchmark-runner -r --grep stress",
+    "benchmarker": "npx benchmarker",
     "examples": "http-server examples/browser"
   },
   "localMaintainers": [
